@@ -4,6 +4,7 @@ nget (0.??) unstable; urgency=low
   * Remove autoconf AC_C_CONST, its only for C progs and breaks g++.
   * Fixed east/west of GMT timezone discrepancy if timezone var not found by configure.
   * Add support for ISO8601 date format and some minor fixes to current date parsing.
+  * -T now prints date in ISO8601 format, rather than seconds since the epoch. 
 
  -- ??
 

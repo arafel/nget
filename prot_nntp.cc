@@ -630,12 +630,13 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 //	}
 
 	if (!doit){
+		char tconvbuf[TCONV_DEF_BUF_LEN];
 		c_nntp_part *p;
 		for(curf = filec->files.begin();curf!=filec->files.end();++curf){
 			f=(*curf).second;
 			p=(*f->parts.begin()).second;
-			//printf("%i/%i\t(%liB,%lil)\t%li\t%s\n",f->have,f->req,f->bytes,f->lines,p->i->date,p->i->subject.c_str());
-			printf("%i/%i\t%lil\t%li\t%s\t%s\t%s\n",f->have,f->req,f->lines(),p->date,f->subject.c_str(),f->author.c_str(),p->messageid.c_str());
+			tconv(tconvbuf,TCONV_DEF_BUF_LEN,&p->date);
+			printf("%i/%i\t%lil\t%s\t%s\t%s\t%s\n",f->have,f->req,f->lines(),tconvbuf,f->subject.c_str(),f->author.c_str(),p->messageid.c_str());
 		}
 		printf("%lu bytes in %u files\n",filec->bytes,filec->files.size());
 	}

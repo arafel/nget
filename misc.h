@@ -63,6 +63,7 @@ const char * getfname(const char * src);
 
 int do_utime(const char *f,time_t t);
 
+#define TCONV_DEF_BUF_LEN 60
 // formatstr="%m-%d-%y %H:%M"
 size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%Y%m%dT%H%M%S", int local=1);
 
