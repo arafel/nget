@@ -1,6 +1,6 @@
 /*
-    nrange.* - stores a set of numbers in a non-memory-hogging way (and speedy too)
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    nrange.* - stores a set of numbers in a non-memory-hogging way (and speedy too?)
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,10 +32,13 @@
 typedef map<ulong, ulong, less<ulong> > t_rlist;//we are going to use high as the key, and low as the value
 class c_nrange{
 	public:
+		static const ulong varmin=0;
+		static const ulong varmax=ULONG_MAX;
 //		s_lrange water;
 		int changed;
 		string file;
 		t_rlist rlist;
+		bool empty(void){return rlist.empty();}
 		int check(ulong n){
 			t_rlist::iterator i=rlist.lower_bound(n);
 			if (i!=rlist.end() && (*i).second<=n)
@@ -43,29 +46,20 @@ class c_nrange{
 			return 0;
 		}
 		void insert(ulong n);
-		//void insert(ulong l,ulong h);
-		void insert(ulong l,ulong h){
-			for (ulong i=l;i<=h;i++)
-				insert(i);//ok, this could really be optomized a lot with a custom func, but I don't feel like doing that now, and inserting this little func here will let me do it later if I want to.
-		}
-//		void remove(ulong n){remove(n,n);}
+		void insert(ulong l,ulong h);
+		void remove(ulong n){remove(n,n);}
 		void remove(ulong l, ulong h);
-		void print(c_file *f){
-			t_rlist::iterator i;
-			//int first=1;
-			for (i=rlist.begin();i!=rlist.end();++i){
-//				if (first)first=0;
-//				else printf(",");
-//				printf("(%lu)",(*i).first);
-				if ((*i).second==(*i).first)
-					f->putf("%lu\n",(*i).second);
-				else
-					f->putf("%lu-%lu\n",(*i).second,(*i).first);
-//				f.putf("\n");
+		void print(c_file *f);
+		void clear(void){
+			if (!rlist.empty()){
+				rlist.erase(rlist.begin(),rlist.end());
+				changed=1;
 			}
-//			printf("\n");
 		}
-		c_nrange(string f);
+		int load(string f,int merge=0);
+		int save(void);
+		c_nrange(c_nrange &r):changed(r.changed),rlist(r.rlist){}
+		c_nrange(string f="");
 		~c_nrange();
 };
 #endif

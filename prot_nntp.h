@@ -1,6 +1,6 @@
 /*
     prot_nntp.* - nntp protocol handler
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,24 +18,38 @@
 */
 #ifndef _PROT_NNTP_H_
 #define _PROT_NNTP_H_
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 //#include <string>
 #include "cache.h"
-#include "nrange.h"
+//#include "nrange.h"
 #include "file.h"
 #include <stdarg.h>
+#include "server.h"
+#include "nrange.h"
 
+#define GETFILES_NODECODE		8
+#define GETFILES_KEEPTEMP		16
+#define GETFILES_TEMPSHORTNAMES 32
+#define GETFILES_NOCONNECT		64
+
+struct quinfo {
+	long bytesleft;
+	long filestot,filesdone;
+	time_t starttime;
+//	long fpartstot,fpartsdone;
+};
 struct arinfo {
 	long Bps;
 	time_t dtime;
-	
-	long anum,linesdone,linestot;
+
+	long anum;
+	long linesdone,linestot;
 	long bytesdone,bytestot;
 	time_t starttime;
-	void print_retrieving_articles(time_t curtime,arinfo*tot);
+	void print_retrieving_articles(time_t curtime,quinfo*tot);
 };
 
 class c_prot_nntp /*: public c_transfer_protocol */{
@@ -45,13 +59,17 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 //		int cbuf_size;
 		int authed;
 		c_file_tcp sock;
-		string host;
-//		const char *user,*pass;
-		string user, pass;
-		string group;
-		int groupselected;
-		c_nrange *grange;
-		c_nntp_cache *gcache;
+//		string host;
+////		const char *user,*pass;
+//		string user, pass;
+		c_server *host;
+		ulong curserverid;
+		c_group_info::ptr group;
+		int groupselected;//have we selected the group on the server?
+//		c_nrange *grange;
+		c_mid_info *midinfo;
+		//c_nntp_cache *gcache;
+		c_nntp_cache::ptr gcache;
 		c_nntp_files_u *filec;
 		time_t starttime;
 
@@ -63,25 +81,30 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 		int getreply(int echo);
 //		int stdgetreply(int echo);
 		int chkreply(int reply);
-		void doxover(int low, int high);
-		void nntp_queueretrieve(const char *match, int linelimit, int getflags);
-		void nntp_retrieve(int doit);
-		void nntp_print_retrieving_headers(long lll,long hhh,long ccc,long bbb);
+		void doxover(ulong low, ulong high);
+		void doxover(c_nrange *r);
+//		void nntp_queueretrieve(const char *match, ulong linelimit, int getflags);
+		void nntp_retrieve(int doit,int options, const string &temppath, const string &writelite);
+		void nntp_print_retrieving_headers(ulong lll,ulong hhh,ulong ccc,ulong bbb);
 //		void nntp_print_retrieving_articles(long nnn, long tot,long done,long btot,long bbb);
 //		void nntp_print_retrieving_articles(arinfo *ari, arinfo*tot);
-		void nntp_group(const char *group, int getheaders);
+		void nntp_group(c_group_info::ptr group, int getheaders);
 		void nntp_dogroup(int getheaders);
 		//void nntp_doarticle(long num,long ltotal,long btotal,char *fn);
-		int nntp_doarticle(arinfo*ari,arinfo*toti,char *fn);
+		int nntp_doarticle_prioritize(c_nntp_part *part,t_nntp_server_articles_prioritized &sap,t_nntp_server_articles_prioritized::iterator *curservsapi);
+		int nntp_dowritelite_article(c_file &fw,c_nntp_part *part,char *fn);
+		int nntp_doarticle(c_nntp_part*part,arinfo*ari,quinfo*toti,char *fn);
 		void nntp_auth(void);
 		void nntp_doauth(const char *user, const char *pass);
-		void nntp_open(const char *h,const char *u,const char *p);
+		//void nntp_open(const char *h,const char *u,const char *p);
+		void nntp_open(c_server *h);
 		void nntp_doopen(void);
 		void nntp_close(int fast=0);
 		void cleanupcache(void);
 		void cleanup(void);
+		void initready(void);
 		c_prot_nntp();
 		~c_prot_nntp();
 };
-	
+
 #endif

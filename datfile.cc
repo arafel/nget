@@ -1,6 +1,6 @@
 /*
     datfile.cc - easy config/etc file handling
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,20 +73,15 @@ void c_data_section::cleanup(void){
 	//		}
 };
 
-
-
-void c_data_file::setfilename(const char * f){
-	filename=f;
-};
-
-void c_data_file::read_list(char *buf,int len,FILE *f, c_data_section *c){
-	char *n,*v;
+void c_data_section::read_list(c_file *f){
+	char *n,*v,*buf;
 	int slen,r;
-	while (fgets(buf,len,f)){
-		slen=strlen(buf);
-		while (slen>0 && (buf[slen-1]=='\n' || buf[slen-1]=='\r')){
+	while ((slen=f->bgets())>=0){
+		buf=f->rbufp();
+//		slen=strlen(buf);
+/*		while (slen>0 && (buf[slen-1]=='\n' || buf[slen-1]=='\r')){
 			buf[--slen]=0;
-		}
+		}*/
 		if (slen<1)
 			continue;
 		r=strspn(buf," \t");
@@ -100,9 +95,9 @@ void c_data_file::read_list(char *buf,int len,FILE *f, c_data_section *c){
 		{
 			c_data_section *d=new c_data_section(buf+r+1);
 			//		c->data[buf+r+1]=d;
-			c->additem(d);
+			additem(d);
 //			printf("new section: %s\n",buf+r+1);
-			read_list(buf,len,f,d);
+			d->read_list(f);
 		}
 		else if (buf[0]!='/')
 		{
@@ -110,46 +105,55 @@ void c_data_file::read_list(char *buf,int len,FILE *f, c_data_section *c){
 			if((v=strchr(n,'='))){
 				*v=0;
 				v++;
-				c->additem(new c_data_item(n,v));
+				additem(new c_data_item(n,v));
 //				printf("new item: %s=%s\n",n,v);
 			}
 		}
 	}
 }
-
-void c_data_file::read(void){
-	if (filename.size()==0)
-	     return;
-	char buf[df_BUFSIZE];
-	FILE *f=fopen(filename.c_str(),"r");
-	if (f){
-		read_list(buf,df_BUFSIZE,f,&data);
-		changed=0;
-		fclose(f);
-	}
-};
-void c_data_file::save_list(int &r,FILE *f, c_data_section *c,const char *cname){
+void c_data_section::save_list(int &r,FILE *f,const char *cname,const char *termin){
 	data_list::iterator i;
 	c_data_item *item;
 	if (cname)
-		fprintf(f,"%*s{%s\n",r,"",cname);
+		fprintf(f,"%*s{%s%s",r,"",cname,termin);
 	r++;
-	i=c->data.begin();
+	i=data.begin();
 //	printf("saving %i items\n",c->data.size());
-	while (i!=c->data.end()){
+	while (i!=data.end()){
 		item=(*i).second;
 //		item->feel();
 		if (item->type==1)
-		     save_list(r,f,(c_data_section*)item,(*i).first);
+		     ((c_data_section*)item)->save_list(r,f,(*i).first);
 		else{
-		     fprintf(f,"%*s%s=%s\n",r,"",(*i).first,item->str.c_str());
+		     fprintf(f,"%*s%s=%s%s",r,"",(*i).first,item->str.c_str(),termin);
 //			 printf("saving %*s%s=%s\n",r,"",(*i).first,item->str.c_str());
 		}
 		++i;
 	}
 	r--;
 	if (cname)
-		fprintf(f,"%*s}\n",r,"");
+		fprintf(f,"%*s}%s",r,"",termin);
+};
+
+
+
+void c_data_file::setfilename(const char * f){
+	filename=f;
+};
+
+
+void c_data_file::read(void){
+	if (filename.size()==0)
+	     return;
+//	char buf[df_BUFSIZE];
+//	FILE *f=fopen(filename.c_str(),"r");
+	c_file_fd f;
+	if (!f.open(filename.c_str(),O_RDONLY)){
+		f.initrbuf(df_BUFSIZE);
+		data.read_list(&f);
+		changed=0;
+		f.close();
+	}
 };
 void c_data_file::save(void){
 	if (filename.size()==0)
@@ -158,7 +162,8 @@ void c_data_file::save(void){
 	int r=-1;
 	FILE *f=fopen(filename.c_str(),"w");
 	if (f){
-		save_list(r,f,&data,NULL);
+		//save_list(r,f,&data,NULL);
+		data.save_list(r,f,NULL);
 		fclose(f);
 		changed=0;
 	}

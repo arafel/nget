@@ -30,26 +30,48 @@ bindir=@bindir@
 mandir=@mandir@
 install=@INSTALL@
 
-all: .autostuff nget
+all: .autostuff nget ngetlite
 
-OBJS=nget.o prot_nntp.o sockstuff.o cache.o file.o misc.o myregex.o datfile.o nrange.o @UULIB@
+OBJS=nget.o prot_nntp.o sockstuff.o cache.o file.o misc.o myregex.o datfile.o etree.o nrange.o log.o @EXTRAOBJS@ @UULIB@
 nget: $(OBJS) .depend 
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $@ $(LIBS)
+
+LITEOBJS=lite.o litenntp.o log.o sockstuff.o
+ngetlite: $(LITEOBJS) .depend 
+	$(CXX) $(CXXFLAGS) $(LITEOBJS) -o $@
+#$(LIBS)
+#	egcc $(CXXFLAGS) -o $@ $(OBJS) $(LIBS) -lstdc++ -lefence
 
 @NOUU@@UULIB@:
 @NOUU@	(cd @UUDIR@; ./configure)
 @NOUU@	make -C @UUDIR@ libuu.a
 
 
-filetest: filetest.o file.o sockstuff.o nrange.o
+nrangetest: nrangetest.o file.o sockstuff.o nrange.o log.o
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LIBS)
+
+filetest2: filetest2.o file.o sockstuff.o
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LIBS)
+
+filetest: filetest.o file.o sockstuff.o
+#filetest: filetest.o file.o sockstuff.o nrange.o
+#filetest: filetest.o myregex.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LIBS)
 
 dep depend .depend:
 	$(CXX) $(CXXFLAGS) -MM *.cc > .depend
 
-install: all
+#nana:
+#	nana $(CXXFLAGS) *.cc > .nana
+
+install_nget: nget
 	$(install) -s -o root -g bin -m 0755 nget $(bindir)
 	$(install) -o root -g bin -m 0644 nget.1 $(mandir)/man1
+
+install_ngetlite: ngetlite
+	$(install) -s -o root -g bin -m 0755 ngetlite $(bindir)
+
+install: install_nget install_ngetlite
 
 
 .autostuff: configure config.h.in config.h Makefile config.status
@@ -80,10 +102,11 @@ config.status: configure
 #	cd ..;tar -czhf nget/distro/nget-`egrep "nget v[0-9.]+ -" nget/nget.cc | sed "s/.*v\([0-9.]\+\).*/\1/"`.tar.gz nget/README nget/Changelog nget/COPYING nget/*.cc nget/*.h nget/Makefile nget/nget.1
 	
 clean:
-	-rm nget *.o
+	-rm nget ngetlite *.o
 
 distclean: clean
-	-rm *~ config.h config.cache config.log Makefile stamp-h .depend
+	-rm config.h config.cache config.log Makefile stamp-h .depend
+#	-rm *~ config.h config.cache config.log Makefile stamp-h .depend
 	-cp .depend.dist .depend
 		 
 

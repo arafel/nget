@@ -1,4 +1,4 @@
-nget 0.7  Copyright 1999 Matt Mueller <donut@azstarnet.com>
+nget 0.8  Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>
 
 Install:
 0) if you have the nget+uulib package, or have uulib as a shared lib: 
@@ -7,21 +7,23 @@ Install:
 1.1) unpack it and run its ./configure && make
 1.2) ./configure --with-uulib=/dir/that/has/uulib
 1.2a) depending upon your compiler you may need to do something like:
-  CXXFLAGS="-fhandle-exceptions -O2 -g" ./configure ....
+  CXXFLAGS="-fhandle-exceptions -O2 -g" ./configure ....  (should be
+  autodetected be configure in nget >= 0.8)
 1.2b) if you get strange errors about redo(and other vars) possibly being used
   uninitialized try compiling with a lower optimization (seems to occur with 
-  gcc 2.7.*)
+  gcc 2.7.*, autodetected in nget >=0.8)
 2) make dep  (if you are using a compiler other than gcc, this may not work)
-3) make 
+3) make
 4) make install
 
 (./configure --help will show extra options not described here)
 
-nget is developed on linux (glibc2), and compiles without modifications on
-linux libc5 and freebsd 2.2.8(did need the CXXFLAGS env to be set as outlined
-above though, if someone has an autoconf test for wether a flag is needed to
-enable exceptions, I'd appreciate it).  It should probably work on other
-systems with little or no modifications.
+nget is developed on linux (glibc2) and win2000(with cygwin), and should
+compile without modifications on any system using g++ 2.95 or other up to date
+compliers.  gcc 2.7.x can no longer build nget. (Though I haven't tried too
+hard anymore).  gcc 2.7.x can however build ngetlite, so you can still use it
+to download on an older comp if you have a recent comp that you can use nget to
+write the listfiles on (-w option).
 
 
 Copying:

@@ -1,6 +1,6 @@
 /*
     cache.* - nntp header cache code
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,55 +23,119 @@
 #endif
 #include <sys/types.h>
 #include <string>
-#include <map.h>
+//#include <map.h>
+#include <map>//#### hmmmm? needed for cygwin instead of map.h?
 #ifdef HAVE_HASH_MAP_H
 #include <hash_map.h>
-#else
-#include <multimap.h>
+//#else
+//#include <multimap.h>
 #endif
+#include <multimap.h>
 #include <list.h>
-#include "nrange.h"
 #include "file.h"
 #include "log.h"
 
-#define CACHE_VERSION "NGET2"
+#include "stlhelp.h"
+#include "etree.h"
 
+#include "rcount.h"
+
+#include "server.h"
+
+#include "nrange.h"
+
+#define CACHE_VERSION "NGET3"
+
+#if 0
 class c_rcount {
-	private:
+	protected:
 		int rcount;
 	public:
 		void inc_rcount(void){rcount++;}
-		void dec_rcount(void){rcount--;if (!rcount) delete this;}//no longer needed.
+		virtual int dec_rcount(void){//needs to be virtual so that it'll destruct the derived classes correctly
+			rcount--;
+			if (rcount<=0) {delete this;return 0;}/*counted object is no longer needed.  return 0 since this no longer exists*/
+			return rcount;
+		}
 		c_rcount():rcount(1){};//initialize rcount to 1, presumably if we are making a new one, we are going to use it for something. :)
-		~c_rcount(){if (rcount) PDEBUG(DEBUG_MIN,"freeing c_rcount %p while rcount==%i\n",this,rcount);};
+		virtual ~c_rcount(){if (rcount) PDEBUG(DEBUG_MIN,"freeing c_rcount %p while rcount==%i\n",this,rcount);assert(rcount==0);};
 };
+#endif
 
 typedef unsigned long t_id;
 class c_nntp_header {
 	private:
 		int parsepnum(const char *str,const char *soff);
-		void setmid(void);
+		void setfileid(void);
 	public:
+		ulong serverid;
 		int partnum, req;
 		int partoff, tailoff;
-		t_id mid;
+		t_id fileid;
 		string subject;
 		string author;
 		ulong articlenum;
 		time_t date;
 		ulong bytes,lines;
-		void set(char *s,const char *a,ulong anum,time_t d,ulong b,ulong l);
+		string messageid;
+		void set(char *s,const char *a,ulong anum,time_t d,ulong b,ulong l,const char *mid);
 //		c_nntp_header(char *s,const char *a,ulong anum,time_t d,ulong b,ulong l);
 };
 
+
+class c_nntp_server_article {
+	public:
+		ulong serverid;
+		ulong articlenum;
+		ulong bytes,lines;
+		c_nntp_server_article(ulong serverid,ulong articlenum,ulong bytes,ulong lines);
+};
+typedef multimap<ulong,c_nntp_server_article*,less<ulong> > t_nntp_server_articles;
+typedef multimap<float,c_nntp_server_article*,less<float> > t_nntp_server_articles_prioritized;
 class c_nntp_part {
 	public:
 		int partnum;
-		ulong articlenum;
+		t_nntp_server_articles articles;
+//		ulong articlenum;
 		time_t date;
-		ulong bytes,lines;
-		c_nntp_part(int pn, ulong an, time_t d, ulong b, ulong l):partnum(pn),articlenum(an),date(d),bytes(b),lines(l){};
+//		ulong apxbytes,apxlines;//approximate/hrmy.
+		string messageid;
+//		c_nntp_part(int pn, ulong an, time_t d, ulong b, ulong l):partnum(pn),articlenum(an),date(d),bytes(b),lines(l){};
+		/*ulong bytes(void){
+			t_nntp_server_articles::iterator nsai(articles.begin());
+			c_nntp_server_article *sa;
+			ulong cbytes=0;
+			float highprio=-10000.0,f;
+			for (;nsai!=articles.end();++nsai) {
+				sa=(*nsai).second;
+				if ((f=nconfig.trustsizes->getserverpriority(sa->serverid)) > highprio){
+					cbytes=sa->bytes;
+					highprio=f;
+				}
+			}
+			return cbytes;
+		}*/
+#define HAPPYSIZEFUNC(T)		ulong T(void) const {\
+			t_nntp_server_articles::const_iterator nsai(articles.begin());\
+			c_nntp_server_article *sa;\
+			ulong c=0;\
+			float highprio=-10000.0,f;\
+			for (;nsai!=articles.end();++nsai) {\
+				sa=(*nsai).second;\
+				if ((f=nconfig.trustsizes->getserverpriority(sa->serverid)) > highprio){\
+					c=sa->T;\
+					highprio=f;\
+				}\
+			}\
+			return c;\
+		}
+		HAPPYSIZEFUNC(bytes)
+		HAPPYSIZEFUNC(lines)
+		c_nntp_part(int pn, time_t d,const char *mid):partnum(pn),date(d),messageid(mid){};
 		c_nntp_part(c_nntp_header *h);
+		~c_nntp_part();
+		void addserverarticle(c_nntp_header *h);
+		c_nntp_server_article *getserverarticle(ulong serverid);
 };
 
 
@@ -79,28 +143,82 @@ typedef map<int,c_nntp_part*,less<int> > t_nntp_file_parts;
 
 //#define FILEFLAG_READ 1
 
-class c_nntp_file : public c_rcount{
+class c_nntp_file : public c_refcounted<c_nntp_file>{
 	public:
 		t_nntp_file_parts parts;
 		int req,have;
-		ulong bytes,lines;
+//		ulong bytes,lines;
 		ulong flags;
-		t_id mid;
+		t_id fileid;
 		string subject,author;
 		int partoff,tailoff;
 		void addpart(c_nntp_part *p);
-		ulong banum(void){return (*parts.begin()).second->articlenum;}
+//		ulong banum(void){assert(!parts.empty());return (*parts.begin()).second->articlenum;}
+		string bamid(void) const {assert(!parts.empty());return (*parts.begin()).second->messageid;}
+		time_t badate(void) const {assert(!parts.empty());return (*parts.begin()).second->date;}
+#define HAPPYSIZEFUNC2(T)		ulong T(void) const {\
+			ulong b=0;\
+			t_nntp_file_parts::const_iterator nfpi(parts.begin());\
+			for (;nfpi!=parts.end();++nfpi){\
+				b+=(*nfpi).second->T();\
+			}\
+			return b;\
+		}
+		HAPPYSIZEFUNC2(bytes)
+		HAPPYSIZEFUNC2(lines)
 		c_nntp_file(c_nntp_header *h);
-		c_nntp_file(int r,ulong f,t_id mi,const char *s,const char *a,int po,int to);
-		~c_nntp_file();
+		c_nntp_file(int r,ulong f,t_id fi,const char *s,const char *a,int po,int to);
+		virtual ~c_nntp_file();
 };
+#if 0
+typedef e_unary_function<c_nntp_file_ptr,bool> nntp_pred;
+
+template <class Op>
+struct e_nntp_file : public e_binary_function<c_nntp_file_ptr, typename Op::arg2_type, typename Op::ret_type> {
+//        typedef typename Op::arg2_type arg2_type;
+//      arg2_type val2;
+        Op O;
+
+//      e_binder2nd(const arg2_type v):val2(v){};
+        virtual ret_type operator()(const arg1_type v,const arg2_type val2) const=0;
+};
+template <class Op>
+struct e_nntp_file_lines : public e_nntp_file<Op> {
+        ret_type operator()(const arg1_type v,const arg2_type val2) const {return O(v->lines,val2);}
+};
+template <class Op>
+struct e_nntp_file_subject : public e_nntp_file<Op> {
+        ret_type operator()(const arg1_type v,const arg2_type val2) const {return O(v->subject,val2);}
+};
+/*
+template <class T1,class T2,class RT>
+struct e_nntp_file : public e_binary_function<c_nntp_file *, T2, typename RT> {
+//        typedef typename Op::arg2_type arg2_type;
+//      arg2_type val2;
+//        Op O;
+	e_binary_function<T1,T2,RT> *O;
+
+//      e_binder2nd(const arg2_type v):val2(v){};
+        virtual ret_type operator()(const T1 v,const T2 val2) const=0;
+};
+template <class Op>
+struct e_nntp_file_lines : public e_nntp_file<Op> {
+        ret_type operator()(const arg1_type v,const arg2_type val2) const {return O(v->lines,val2);}
+};
+template <class Op>
+struct e_nntp_file_subject : public e_nntp_file<typename Op::arg1_type,typename Op::arg2_type,typename Op::ret_type> {
+        ret_type operator()(const arg1_type v,const arg2_type val2) const {return (*O)(v->subject,val2);}
+};
+*/
+#endif
 //typedef hash_map<const char*, c_nntp_file*, hash<const char*>, eqstr> t_nntp_files;
 #ifdef HAVE_HASH_MAP_H
-typedef hash_multimap<t_id, c_nntp_file*, hash<t_id>, equal_to<t_id> > t_nntp_files;
+typedef hash_multimap<t_id, c_nntp_file::ptr, hash<t_id>, equal_to<t_id> > t_nntp_files;
 #else
-typedef multimap<t_id, c_nntp_file*, less<t_id> > t_nntp_files;
+typedef multimap<t_id, c_nntp_file::ptr, less<t_id> > t_nntp_files;
 #endif
-typedef map<ulong,c_nntp_file*,less<ulong> > t_nntp_files_u;
+//typedef map<ulong,c_nntp_file*,less<ulong> > t_nntp_files_u;
+typedef multimap<time_t,c_nntp_file::ptr,less<ulong> > t_nntp_files_u;
 class c_nntp_files_u {
 	public:
 		ulong bytes,lines;
@@ -109,23 +227,111 @@ class c_nntp_files_u {
 		~c_nntp_files_u();
 };
 
-#define GETFILES_CASESENSITIVE  1
-#define GETFILES_GETINCOMPLETE  2
-#define GETFILES_NODUPECHECK    4
+#define GETFILES_CASESENSITIVE	1
+#define GETFILES_GETINCOMPLETE	2
+#define GETFILES_NODUPEIDCHECK	4
+#define GETFILES_NODUPEFILECHECK	128
 
-class c_nntp_cache {
+class c_nntp_server_info {
+	public:
+		ulong serverid;
+		ulong high,low,num;
+		c_nntp_server_info(ulong sid):serverid(sid),high(0),low(ULONG_MAX),num(0){}
+		c_nntp_server_info(ulong sid,ulong hig,ulong lo,ulong nu):serverid(sid),high(hig),low(lo),num(nu){}
+};
+typedef map<ulong,c_nntp_server_info*,less<ulong> > t_nntp_server_info;
+
+class c_message_state {
+	public:
+		string messageid;
+		time_t date_added,date_removed;
+		c_message_state(string mid,time_t da,time_t dr):messageid(mid),date_added(da),date_removed(dr){}
+};
+
+#ifdef HAVE_HASH_MAP_H
+typedef hash_map<const char*, c_message_state*, hash<const char*>, eqstr> t_message_state_list;
+#else
+typedef map<const char*, c_message_state*, hash<const char*>, ltstr> t_message_state_list;
+#endif
+
+//hrm.
+#define TIME_T_MAX INT_MAX
+#define TIME_T_MAX1 (TIME_T_MAX-1)
+#define TIME_T_DEAD TIME_T_MAX
+
+class c_mid_info {
+	public:
+		string file;
+		int changed;
+		t_message_state_list states;
+		int check(string mid){
+			if (states.find(mid.c_str())!=states.end())
+				return 1;
+			return 0;
+		}
+		void insert(string mid){
+			if (check(mid))return;
+			changed=1;
+			c_message_state *s=new c_message_state(mid,time(NULL),TIME_T_MAX1);
+			states.insert(t_message_state_list::value_type(s->messageid.c_str(),s));
+			return;
+		}
+		void insert_full(string mid, time_t a, time_t d){
+			t_message_state_list::iterator i=states.find(mid.c_str());
+			c_message_state *s;
+			if (i!=states.end()){
+				s=(*i).second;
+//				if ((*i).second->changed)return;/arrrr
+				if (d==TIME_T_MAX1 && s->date_removed!=TIME_T_MAX1) return;//ours has been deleted but not what we merging
+				if (s->date_removed!=TIME_T_MAX1 && s->date_removed > d) return; //both are deleted, but ours has more recent time?
+				delete s;
+				states.erase(i);
+			}
+			s=new c_message_state(mid,a,d);
+			states.insert(t_message_state_list::value_type(s->messageid.c_str(),s));
+		}
+		void clear(void){
+			if (!states.empty()){
+				t_message_state_list::iterator i=states.begin();
+				for (;i!=states.end();++i){
+					delete (*i).second;
+				}
+				states.erase(states.begin(),states.end());
+				changed=1;
+			}
+		}
+		void set_delete(string mid){
+			t_message_state_list::iterator i=states.find(mid.c_str());
+			if (i!=states.end()){
+				(*i).second->date_removed=time(NULL);
+			}
+		}
+		void do_delete_fun(c_mid_info &rel_mid);
+		int load(string path,int merge=0);
+		int save(void);
+		c_mid_info(string path);
+		~c_mid_info();
+};
+
+class c_nntp_cache : public c_refcounted<c_nntp_cache>{
 	public:
 		string cdir,file;
 		t_nntp_files files;
-		ulong high,low,num;
+		ulong totalnum;
+//		ulong high,low,num;
+		t_nntp_server_info server_info;
+		c_nntp_server_info*getserverinfo(ulong serverid);
 		int saveit;
 		int fileread;
 		//int additem(ulong an,char *s,const char * a,time_t d, ulong b, ulong l){
 		int additem(c_nntp_header *h);
-		ulong flushlow(ulong newlow);
-		c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_nrange *grange,const char *match, unsigned long linelimit,int flags);
-		c_nntp_cache(string path,string hid,string nid);
-		~c_nntp_cache();
+		ulong flushlow(c_nntp_server_info *servinfo, ulong newlow, c_mid_info *midinfo);
+		void getxrange(c_nntp_server_info *servinfo, ulong newhigh, c_nrange *range);
+		//c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_nrange *grange,const char *match, unsigned long linelimit,int flags);
+		//c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_nrange *grange,nntp_pred *pred,int flags);
+		c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_mid_info *midinfo,generic_pred *pred,int flags);
+		c_nntp_cache(string path,string nid);
+		virtual ~c_nntp_cache();
 };
 
 #endif

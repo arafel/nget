@@ -1,6 +1,6 @@
 /*
     sockstuff.* - socket handling code
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,11 +27,15 @@
 //#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
- 
+#include <stdarg.h>
+
+int atosockaddr(const char *netaddress, const char *defport, const char *proto,struct sockaddr_in *address, char * buf, int buflen);
 
 int atoport(const char *service,const char *proto,char * buf, int buflen);
+int atoaddr(const char *netaddress,struct in_addr *addr,char *buf, int buflen);
+
 //int make_connection(char *service, int type, char *netaddress,char * buf, int buflen);
-int make_connection(const char *defservice, int type,const char *netaddress,const char *service,char * buf, int buflen);
+int make_connection(int type,const char *netaddress,const char *service,char * buf, int buflen);
 
 int getsocketaddress(int s, struct sockaddr_in *addr);
 int get_connection1(int socket_type, u_short port);
@@ -42,6 +46,7 @@ int sock_read(int sockfd, void *buf, size_t count);
 int sock_gets(int sockfd, char *str, size_t count);
 int sock_puts(int sockfd, const char *str);
 
+int sockvprintf(int sockfd, const char *str, va_list ap);
 int sockprintf(int sockfd, const char *str, ...)
         __attribute__ ((format (printf, 2, 3)));
 #endif

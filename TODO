@@ -1,11 +1,26 @@
 definataly gonna do:
- 
- * allow searching based upon date/author/lines etc.  ideally, something like:
-   nget -r (date > 03/04/1999 && (author = bob && subject = file\.) || (subject
-   = blah))
+*make manpage for ngetlite
+*make MID_INFO_MIN_KEEP, etc config options
+*update STL includes/etc to use new non-.h files, and std namespace
+*fix EINTR (should try read again, not err (also should keep the same timeout within multiple tries?))
+*add log output ability
+*fix tempfiledir mixup where -w to write doesn't use the tempfile dir and such misses parts we already have
+*test libc5/old gcc (forget it.  ngetlite is their only hope. upgrade.)
+*make it store the path to store in the retrieve queue, so that we wouldn't have to 
+  delete cache/retrieve files/reload cache/repeat for every dir change
+
+
+multi-server merged cache thingy:
+
+ finish server/group/prio/etc (server.h) -- still needs to do default hosts for -g if no hosts specified
+
+
 
 might do eventually:
 
+ * allow searching based upon date/author/lines etc.  ideally, something like:
+   nget -r (date > 03/04/1999 && (author = bob && subject = file\.) || (subject
+   = blah)).. DONE, but uses postfix method.. might be nice to add infix type.
  * check for existance of files, don't d/l what we have already (overridable?)
 	use substring match to select filename? (ie: -r "heres the
 	files:.*(snarf\.r..) ").
@@ -22,8 +37,10 @@ only considering:
  * store fileread info in a seperate file, so we don't have to write out the
    big ole cache again. -- partially done, just need to implement
    saving/loading/checking/adding ... DONE... but should we store only the anum
-   of the first part, like now, or all of the anums?
- * possible extension to the tempfile name as checksums idea to include both
-	the group and the header info in the same checksum, to allow for a 8.3
-	filename.  I don't really care much, as I've no need for it, but maybe
-	if someone really needs it...
+   of the first part, like now, or all of the anums? (anums -> message-ids)
+
+
+Misc info:
+rfc977	"Network News Transfer Protocol"
+rfc1036	"Standard for Interchange of USENET Messages"
+various other rfcs/drafts: http://www.tin.org/docs.html

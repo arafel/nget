@@ -1,6 +1,6 @@
 /*
     sockstuff.* - socket handling code
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #include "sockstuff.h"
@@ -34,14 +34,16 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "log.h"
 #ifdef WRFTP
 #include "main.h"
 #endif
-#include "misc.h"
+//#include "misc.h"
 
 int sock_timeout=3*60;
+//int sock_timeout=10;
 
 /* Take a service name, and a service type, and return a port number.  If the
 service name is not found, it tries it as a decimal number.  The number
@@ -50,10 +52,11 @@ returned is byte ordered for the network. */
 int atoport(const char *service, const char *proto,char * buf, int buflen) {
 	int port;
 	long int lport;
-	struct servent servb, *serv;
+	struct servent *serv;
 	char *errpos;
 	/* First try to read it from /etc/services */
 #ifdef HAVE_GETSERVBYNAME_R
+	struct servent servb;
 	getservbyname_r(service,proto,&servb,buf,buflen,&serv);
 #else
 	serv = getservbyname(service, proto);
@@ -69,40 +72,101 @@ int atoport(const char *service, const char *proto,char * buf, int buflen) {
 	return port;
 }
 
+int atoaddr(const char *netaddress,struct in_addr *addr,char *buf, int buflen){
+	if
+#ifdef HAVE_INET_ATON
+		(inet_aton(netaddress,addr))
+#else
+		((addr->s_addr=inet_addr(netaddress))!=INADDR_NONE)
+#endif
+			return 1;
+	else {
+		struct hostent *host;
+#ifdef HAVE_GETHOSTBYNAME_R
+		int err;
+		struct hostent hostb;
+		gethostbyname_r(netaddress,&hostb,buf,buflen,&host,&err);
+#else
+		host = gethostbyname(netaddress);
+#endif
+		if (host != NULL) {
+//			addr=(struct in_addr *)*host->h_addr_list;
+			memcpy(addr,(struct in_addr *)*host->h_addr_list,sizeof(struct in_addr));
+			return 1;
+		}
+		else return 0;
+	}
+}
+
+int atosockaddr(const char *netaddress, const char *defport, const char *proto,struct sockaddr_in *address, char * buf, int buflen){
+	char *p;
+	char *a;
+	address->sin_family = AF_INET;
+	if ((p=strrchr(netaddress,':')))
+			defport=p+1;
+	int port=atoport(defport,proto,buf,buflen);
+	if (port<0)
+		return -1;
+	address->sin_port=port;
+	if (p){
+		a=new char[p-netaddress+1];
+		memcpy(a,netaddress,p-netaddress);
+		a[p-netaddress]=0;
+		netaddress=a;
+	}else
+		a=NULL;
+	if (!atoaddr(netaddress,&address->sin_addr,buf,buflen)){
+		if (a) delete [] a;
+		return -2;
+	}
+	if (a) delete [] a;
+	return 0;
+//	address->sin_addr.s_addr = addr.s_addr;
+}
 
 /* This is a generic function to make a connection to a given server/port.
 service is the port name/number,
 type is either SOCK_STREAM or SOCK_DGRAM, and
 netaddress is the host name to connect to.
 The function returns the socket, ready for action.*/
-int make_connection(const char *defservice, int type,const char *netaddress,const char *service,char * buf, int buflen){
-	PERROR("make_connection(%s,%i,%s,%s,%p,%i)",defservice,type, netaddress, service,buf, buflen);
+int make_connection(int type,const char *netaddress,const char *service,char * buf, int buflen){
+	PERROR("make_connection(%i,%s,%s,%p,%i)",type, netaddress, service,buf, buflen);
 	/* First convert service from a string, to a number... */
-	int port = -1;
-	struct in_addr *addr;
+	//int r;
+//	struct in_addr *addr;
 	int sock, connected;
 	struct sockaddr_in address;
 	//	char *tmp;
-	struct hostent hostb,*host;
-	static struct in_addr saddr;
-	int err;
+	//struct hostent hostb;//,*host;
+//	static struct in_addr saddr;
+//	struct in_addr addr;
+	//int err;
 
-	if (!(service && *service))
-		service=defservice;
+	errno=0;//prevent showing bogus errno
+//	if (!(service && *service))
+//		service=defservice;
+
 
 	//	if ((tmp=strrchr(netaddress,':')))
 	//	     service=tmp+1;
+	char *prot;
 	if (type == SOCK_STREAM)
-		port = atoport(service, "tcp",buf,buflen);
+//		port = atoport(service, "tcp",buf,buflen);
+		prot="tcp";
 	else if (type == SOCK_DGRAM)
-		port = atoport(service, "udp",buf,buflen);
-	if (port == -1) {
-		PERROR("make_connection:  Invalid socket type %s",service);
+//		port = atoport(service, "udp",buf,buflen);
+		prot="udp";
+	else {
+		PERROR("make_connection:  Invalid prot type %i",type);
 		return -1;
 	}
+//	if (r == -1) {
+//		PERROR("make_connection:  Invalid socket type %s",service);
+//		return -1;
+//	}
 	//	if (tmp)
 	//	     *tmp=0;
-	if (inet_aton(netaddress,&saddr)) {
+/*	if (inet_aton(netaddress,&saddr)) {
 		addr=&saddr;
 	} else {
 #ifdef HAVE_GETHOSTBYNAME_R
@@ -114,24 +178,29 @@ int make_connection(const char *defservice, int type,const char *netaddress,cons
 			addr=(struct in_addr *)*host->h_addr_list;
 		}
 		else addr=NULL;
-	}
-	if (addr == NULL) {
-		PERROR("make_connection:  Invalid network address %s (%i %i)",netaddress,err,errno);
+	}*/
+//	if (atoaddr(netaddress,&addr,buf,buflen)==0){
+//	if (addr == NULL) {
+//		PERROR("make_connection:  Invalid network address %s (%i %i)",netaddress,0,errno);
 		//		if (tmp) *tmp=':';
-		return -1;
-	}
+//		return -1;
+//	}
 	//	if (tmp) *tmp=':';
 
-	unsigned char *i;
-	i=(unsigned char *)&addr->s_addr;
-	PMSG("Connecting to %i.%i.%i.%i:%i",i[0],i[1],i[2],i[3],ntohs(port));
-
 	memset((char *) &address, 0, sizeof(address));
-	address.sin_family = AF_INET;
-	address.sin_port = (port);
-	address.sin_addr.s_addr = addr->s_addr;
+	if (atosockaddr(netaddress,service,prot,&address,buf,buflen)<0){
+		PERROR("make_connection:  Invalid network address %s (%s)(%i %s)",netaddress,service,errno,strerror(errno));
+		return -1;
+	}
+	unsigned char *i;
+	i=(unsigned char *)&address.sin_addr.s_addr;
+	PMSG("Connecting to %i.%i.%i.%i:%i",i[0],i[1],i[2],i[3],ntohs(address.sin_port));
 
-	sock = socket(AF_INET, type, 0);
+/*	address.sin_family = AF_INET;
+	address.sin_port = (port);
+	address.sin_addr.s_addr = addr.s_addr;*/
+
+	sock = socket(address.sin_family, type, 0);
 
 
 	//  printf("Connecting to %s on port %d.\n",inet_ntoa(*addr),htons(port));
@@ -156,10 +225,12 @@ int make_connection(const char *defservice, int type,const char *netaddress,cons
 				socklen_t erl=sizeof(erp);
 				if (getsockopt(sock,SOL_SOCKET,SO_ERROR,&erp,&erl)){
 					PERROR("getsockopt: %s",strerror(errno));
+					close(sock);
 					return -1;
 				}
 				if (erp) {
 					PERROR("connect: %s",strerror(erp));
+					close(sock);
 					return -1;
 				}
 			}else{
@@ -173,6 +244,7 @@ int make_connection(const char *defservice, int type,const char *netaddress,cons
 #endif
 		if (connected < 0) {
 			PERROR("connect: %s",strerror(errno));
+			close(sock);
 			return -1;
 		}
 		return sock;
@@ -180,6 +252,7 @@ int make_connection(const char *defservice, int type,const char *netaddress,cons
 	/* Otherwise, must be for udp, so bind to address. */
 	if (bind(sock, (struct sockaddr *) &address, sizeof(address)) < 0) {
 		PERROR("bind: %s",strerror(errno));
+		close(sock);
 		return -1;
 	}
 	return sock;
@@ -360,20 +433,24 @@ int sock_puts(int sockfd, const char *str) {
 }
 
 
-int sockprintf(int sockfd, const char *str, ...) {
+int sockvprintf(int sockfd, const char *str, va_list ap) {
 #ifndef HAVE_VDPRINTF
 	static char fpbuf[255];
 #endif
-	va_list ap;
 
-	va_start(ap,str);
 #ifdef HAVE_VDPRINTF
 	int i=vdprintf(sockfd,str,ap);
-	va_end(ap);
 	return i;
 #else
 	vsprintf(fpbuf,str,ap);
-	va_end(ap);
 	return sock_write(sockfd, fpbuf, strlen(fpbuf));
 #endif
+}
+int sockprintf(int sockfd, const char *str, ...) {
+	int r;
+	va_list ap;
+	va_start(ap,str);
+	r=sockvprintf(sockfd,str,ap);
+	va_end(ap);
+	return r;
 }

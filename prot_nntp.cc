@@ -1,6 +1,6 @@
 /*
     prot_nntp.* - nntp protocol handler
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #include "prot_nntp.h"
@@ -72,7 +72,7 @@ int c_prot_nntp::doputline(int echo,const char * str,va_list ap){
 	i=vasprintf(&fpbuf,str,ap);
 //	va_end(ap);
 	if (!(fpbuf=(char*)realloc(fpbuf,i+3))){
-		delete(fpbuf);
+		free(fpbuf);
 		nntp_close();
 		throw new c_error(EX_T_ERROR,"nntp_putline:realloc(%p,%i) %s(%i)",fpbuf,i+3,strerror(errno),errno);
 	}
@@ -85,22 +85,22 @@ int c_prot_nntp::doputline(int echo,const char * str,va_list ap){
 //	if (((i=sock.putf("%s\r\n",fpbuf))<=0)){
 	if (((i=sock.write(fpbuf,i+2))<=0)){
 //		printf("nntp_putline:%i %s(%i)\n",i,strerror(errno),errno);
-		delete(fpbuf);
+		free(fpbuf);
 		nntp_close(1);
 		throw new c_error(EX_T_ERROR,"nntp_putline:%i %s(%i)",i,strerror(errno),errno);
 	}
-	delete(fpbuf);
+	free(fpbuf);
 	return i;
 }
 
 int c_prot_nntp::getline(int echo){
 	//int i=sock_gets(ch,cbuf,cbuf_size);
 	int i=sock.bgets();
-	if (i<=0){
+	if (i<0){//==0 can be legally achieved since the line terminators are removed
 		nntp_close(1);
 		throw new c_error(EX_T_ERROR,"nntp_getline:%i %s(%i)",i,strerror(errno),errno);
 	}else {
-		cbuf=sock.rbufp;
+		cbuf=sock.rbufp();
 		time(&lasttime);
 		if (echo)
 			printf("%s\n",cbuf);
@@ -126,28 +126,52 @@ int c_prot_nntp::getreply(int echo){
 	return code;
 }
 
-inline void c_prot_nntp::nntp_print_retrieving_headers(long lll,long hhh,long ccc,long bbb){
+inline void c_prot_nntp::nntp_print_retrieving_headers(ulong lll,ulong hhh,ulong ccc,ulong bbb){
 	long tot=hhh-lll+1,done=ccc-lll+1;
 	time_t dtime=lasttime-starttime;
 	long Bps=(dtime>0)?bbb/dtime:0;
 	long Bph=(done>0)?bbb/done:0;
-	printf("\rRetrieving headers %li-%li: %li %3li%% %liB/s %lis ",lll,hhh,done,(tot!=0)?(done*100/tot):0,Bps,(Bps>0)?((hhh-ccc)*Bph)/(Bps):0);
+	printf("\rRetrieving headers %lu-%lu: %li %3li%% %liB/s %lis ",lll,hhh,done,(tot!=0)?(done*100/tot):0,Bps,(Bps>0)?((hhh-ccc)*Bph)/(Bps):0);
 	fflush(stdout);//@@@@
 }
+/*
+2019    Re: question    Katya Moon <MoonAngel@shadowrealm.com>  Wed, 17 Nov 1999 09:42:53 -0600 <xMwyOI+pJ=mVLqMociXeHexHGW92@4ax.com>      <3830CF31.D41E1511@tampabay.rr.com>     1145    9       Xref: rQdQ alt.chocobo:2019
+2020    Re: well then!  Katya Moon <MoonAngel@shadowrealm.com>  Wed, 17 Nov 1999 09:44:37 -0600 <Fs0yOEVKaIamwKGBgE=82Fk21OcM@4ax.com>      <3831B98A.72815A01@tampabay.rr.com>     1209    10      Xref: rQdQ alt.chocobo:2020
+2021    free me from this hideous thing!        Selah <sslanka@tampabay.rr.com> Wed, 17 Nov 1999 20:17:35 GMT   <38330E93.C8AC2671@tampabay.rr.com>         1142    8       Xref: rQdQ alt.chocobo:2021
+.
+0=articlenum
+1=subject
+2=author
+3=date
+4=message id
+5=in reply to (for threading)
+6=bytes
+7=lines
+... following are optional (and possibly different):
+8=crossreferences
 
-void c_prot_nntp::doxover(int low, int high){
+The sequence of fields must be in this order:
+subject, author, date, message-id, references, byte count, and line count.
+Other optional fields may follow line count. These fields are specified by
+examining the response to the LIST OVERVIEW.FMT command. Where no data
+exists, a null field must be provided
+*/
+void c_prot_nntp::doxover(ulong low, ulong high){
 	char *p;
 	time_t curt,lastt=0;
 	char *t[10];
-	long bytes=0,realnum=0;
-	int i,lowest=-1,dcounter=0,dtrip=10,dtripmax=50,dtripmin=2,dtripdiv=50;
+	ulong bytes=0,realnum=0,lowest=0;
+	int i,dcounter=0,dtrip=10,dtripmax=50,dtripmin=2,dtripdiv=50;
 	nntp_doopen();
 	nntp_dogroup(0);
 	if (!quiet){
 		time(&starttime);
 		nntp_print_retrieving_headers(low,high,low,0);
 	}
-	chkreply(stdputline(debug>=DEBUG_MED,"XOVER %i-%i",low,high));
+	if (low==high)
+		chkreply(stdputline(debug>=DEBUG_MED,"XOVER %lu",low));//save a few bytes
+	else
+		chkreply(stdputline(debug>=DEBUG_MED,"XOVER %lu-%lu",low,high));
 	time(&starttime);
 	time(&curt);
 	//stdgetreply(debug);
@@ -167,7 +191,7 @@ void c_prot_nntp::doxover(int low, int high){
 			if (i==0 || i==6 || i==7){
 				tp=t[i];
 				while (*tp){
-					if (!isdigit(*tp))
+					if (!isdigit(*tp) && !isspace(*tp))
 						break;
 					tp++;
 				}
@@ -175,10 +199,11 @@ void c_prot_nntp::doxover(int low, int high){
 				if (*tp && tp!=t[i]){
 					// no - get out and read the next line
 					// Is this how we want to handle it? SMW
-					printf("error retrieving xover (%i non-numeric): ",i);
-					for (int j=0;j<i;j++)
-						printf("%i:%s ",j,t[j]);
-					printf("*:%s\n",p);
+					printf("error retrieving xover (%i non-numeric)\n",i);
+//					printf("error retrieving xover (%i non-numeric): ",i);
+//					for (int j=0;j<i;j++)
+//						printf("%i:%s ",j,t[j]);
+//					printf("*:%s\n",p);
 					break;
 				}
 			}
@@ -187,12 +212,13 @@ void c_prot_nntp::doxover(int low, int high){
 		//	c=new c_nntp_cache_item(atol(t[0]),	decode_textdate(t[3]), atol(t[6]), atol(t[7]),t[1],t[2]);
 			//gcache->additem(c);
 			an=atoul(t[0]);
-			nh.set(t[1],t[2],an,decode_textdate(t[3]),atoul(t[6]),atoul(t[7]));
+			nh.set(t[1],t[2],an,decode_textdate(t[3]),atoul(t[6]),atoul(t[7]),t[4]);
+			nh.serverid=curserverid;
 			//gcache->additem(an, decode_textdate(t[3]), atol(t[6]), atol(t[7]),t[1],t[2]);
 			gcache->additem(&nh);
 			//delete nh;
 			realnum++;
-			if (lowest==-1){
+			if (lowest==0){
 				lowest=an;
 				dtrip=(high-lowest)/dtripdiv;
 				if (dtrip>dtripmax)
@@ -212,22 +238,36 @@ void c_prot_nntp::doxover(int low, int high){
 			for (int j=0;j<i;j++)
 				printf("%i:%s ",j,t[j]);
 			printf("*:%s\n",p);
-			break;
+//			break;
+			continue;
 		}
 	}while(1);
-	if(!quiet && an){
+	if(!quiet /*&& an*/){
+		if (lowest==0)
+			lowest=an=low;
 		nntp_print_retrieving_headers(lowest,high,an,bytes);
 		printf("(%li)\n",realnum);
 	}
 }
+//unfortunatly, XOVER doesn't allow for more than one range per xover command.
+void c_prot_nntp::doxover(c_nrange *r){
+	if (r->empty())
+		return;
+	t_rlist::iterator i;
+	for (i=r->rlist.begin();i!=r->rlist.end();++i){
+//		printf("%lu-%lu\n",(*i).second,(*i).first);
+		doxover((*i).second,(*i).first);
+	}
+}
 
 void c_prot_nntp::nntp_dogroup(int getheaders){
-	if(!gcache && getheaders){
+	//if(!gcache && getheaders){
+	if(gcache.isnull() && getheaders){
 		throw new c_error(EX_U_FATAL,"nntp_dogroup: nogroup selected");
 	}
 	nntp_doopen();
 	if (groupselected) return;
-	chkreply(stdputline(1,"GROUP %s",group.c_str()));
+	chkreply(stdputline(!quiet,"GROUP %s",group->group.c_str()));
 //	stdgetreply(1);
 	groupselected=1;
 	char *p;
@@ -240,9 +280,10 @@ void c_prot_nntp::nntp_dogroup(int getheaders){
 	high=atoi(p);
 //	printf("%i, %i, %i\n",num,low,high);
 	if (getheaders){
-		if (low>gcache->low)
-			gcache->flushlow(low);
-		if (low>0){
+		c_nntp_server_info* servinfo=gcache->getserverinfo(curserverid);
+		if (low>servinfo->low)
+			gcache->flushlow(servinfo,low,midinfo);
+/*		if (low>0){
 			ulong l=(high-low)/4;//keep 1/4 the current number of headers worth of old read info.. make configureable?
 			if (low>l){
 				l=low-l-1;
@@ -250,27 +291,40 @@ void c_prot_nntp::nntp_dogroup(int getheaders){
 			}
 //			else
 //				l=0;
+		}*/ //TODO: fixup grange (midinfo.. check based upon cfg'd date?)
+		if (host->fullxover){
+			c_nrange r;
+			gcache->getxrange(servinfo,high,&r);
+			doxover(&r);
+		}else{
+//			c_nrange r;
+			if (servinfo->high<high)
+//				r.insert(servinfo->high+1,high);
+				doxover(servinfo->high+1,high);
+			if (servinfo->low>low)
+//				r.insert(low,servinfo->low-1);
+				doxover(low,servinfo->low-1);
+//			doxover(&r);
 		}
-		if (gcache->high<high)
-			doxover(gcache->high+1,high);
-		if (gcache->low>low)
-			doxover(low,gcache->low-1);
 	}
 };
 
-void c_prot_nntp::nntp_group(const char *ngroup, int getheaders){
+void c_prot_nntp::nntp_group(c_group_info::ptr ngroup, int getheaders){
 
 	group=ngroup;
 //	if (gcache) delete gcache;
 	cleanupcache();
-	grange=new c_nrange(nghome + "/" + host + "/" + group + "_r");
-	gcache=new c_nntp_cache(nghome,host,group);
+//	grange=new c_nrange(nghome + "/" + host + "/" + group + "_r");
+//	grange=new c_nrange(nghome + "/" + group + "_r");
+
+	midinfo=new c_mid_info((nghome + group->group + "_midinfo"));
+	gcache=new c_nntp_cache(nghome,group->group);
 	groupselected=0;
 	if (getheaders)
 		nntp_dogroup(getheaders);
 }
 
-inline void arinfo::print_retrieving_articles(time_t curtime, arinfo*tot){
+inline void arinfo::print_retrieving_articles(time_t curtime, quinfo*tot){
 	dtime=curtime-starttime;
 	Bps=(dtime>0)?bytesdone/dtime:0;
 	printf("\rarticle %li: %li/%liL %li/%liB %3li%% %liB/s %lis ",
@@ -278,9 +332,10 @@ inline void arinfo::print_retrieving_articles(time_t curtime, arinfo*tot){
 			(linestot!=0)?(linesdone*100/linestot):0,Bps,
 			(linesdone>=linestot)?dtime:((Bps>0)?(bytestot-bytesdone)/(Bps):-1));
 	if (tot)
-		printf("%li/%li %lis ",tot->linesdone,tot->linestot,
+		printf("%li/%li %lis ",tot->filesdone,tot->filestot,
 				//(tot->bytesdone>=tot->bytestot)?curtime-tot->starttime:((Bps>0)?(tot->bytestot-tot->bytesdone)/(Bps):-1));
-				(linesdone>=linestot)?curtime-tot->starttime:((Bps>0)?(tot->bytestot-tot->bytesdone)/(Bps):-1));
+//				(linesdone>=linestot)?curtime-tot->starttime:((Bps>0)?(tot->bytestot-tot->bytesdone)/(Bps):-1));
+				(linesdone>=linestot)?curtime-tot->starttime:((Bps>0)?(tot->bytesleft-bytesdone)/(Bps):-1));
 	fflush(stdout);
 }
 
@@ -291,19 +346,97 @@ inline void arinfo::print_retrieving_articles(time_t curtime, arinfo*tot){
 //	fflush(stdout);//@@@@
 //}
 
+int c_prot_nntp::nntp_doarticle_prioritize(c_nntp_part *part,t_nntp_server_articles_prioritized &sap,t_nntp_server_articles_prioritized::iterator *curservsapi){
+	t_nntp_server_articles::iterator sai;
+	c_nntp_server_article *sa=NULL;
+	float prio;
+	for (sai = part->articles.begin(); sai != part->articles.end(); ++sai){
+		sa=(*sai).second;
+		assert(sa);
+		prio=group->priogrouping->getserverpriority(sa->serverid);
+		if (curservsapi){
+			if (curserverid==sa->serverid)
+				prio*=2.0;//TODO: set curservpriomult upon cfg?
+		}
+		PDEBUG(DEBUG_MED,"prioritizing server %lu article %lu prio %f",sa->serverid,sa->articlenum,prio);
+		if (curservsapi && curserverid==sa->serverid)
+			*curservsapi=sap.insert(t_nntp_server_articles_prioritized::value_type(prio,sa));
+		else
+			sap.insert(t_nntp_server_articles_prioritized::value_type(prio,sa));
+	}
+	if (curservsapi && *curservsapi!=sap.end() && (*(*curservsapi)).first==(*sap.rend()).first && (*(*curservsapi)).second!=(*sap.rend()).second){ //if prio is the same as a prio for a non-curserverid server, the curserver one should be chosen, as we should avoid excessive reconnecting.   (if prio > (*sap.rend()).first, it'll be chosen anyway.  if prio < (*sap.rend()).first, we don't want to choose it, its lower priority.)
+		prio=(**curservsapi).first;
+		sa=(**curservsapi).second;
+		sap.erase(*curservsapi);
+		prio*=1.5;
+		sap.insert(t_nntp_server_articles_prioritized::value_type(prio,sa));
+		PDEBUG(DEBUG_MED,"server %lu article %lu reprioritized %f",sa->serverid,sa->articlenum,prio);
+	}
+	return 0;
+}
 
-int c_prot_nntp::nntp_doarticle(arinfo*ari,arinfo*toti,char *fn){
+
+int c_prot_nntp::nntp_dowritelite_article(c_file &fw,c_nntp_part *part,char *fn){
+	fw.putf("0\n%s\n%s\n",group->group.c_str(),fn);
+
+	c_server *whost;
+	c_nntp_server_article *sa=NULL;
+	t_nntp_server_articles_prioritized sap;
+	t_nntp_server_articles_prioritized::reverse_iterator sapi;
+	nntp_doarticle_prioritize(part,sap,NULL);
+	fw.putf("%i\n",sap.size());
+	for (sapi = sap.rbegin(); sapi != sap.rend(); ++sapi){
+		sa=(*sapi).second;
+		whost=nconfig.serv[sa->serverid];
+		fw.putf("%s\n%lu\n%lu\n%lu\n",whost->addr.c_str(),sa->articlenum,sa->bytes,sa->lines);
+	}
+	return 0;
+}
+int c_prot_nntp::nntp_doarticle(c_nntp_part *part,arinfo*ari,quinfo*toti,char *fn){
 //	long bytes=0,lines=0;
 	int header=1;
 	time_t curt,lastt=0;
 	//c_file_stream f;
 	c_file_fd f;
-	nntp_doopen();
-	nntp_dogroup(0);
-	if (stdputline(debug>=DEBUG_MED,"ARTICLE %li",ari->anum)/100!=2){
-		printf("error retrieving article %li: %s\n",ari->anum,cbuf);
+	c_nntp_server_article *sa=NULL;
+	t_nntp_server_articles_prioritized sap;
+	t_nntp_server_articles_prioritized::reverse_iterator sapi;
+	t_nntp_server_articles_prioritized::iterator curservsapi=sap.end();
+	nntp_doarticle_prioritize(part,sap,&curservsapi);
+	for (sapi = sap.rbegin(); sapi != sap.rend(); ++sapi){
+		sa=(*sapi).second;
+		assert(sa);
+		if (curserverid!=sa->serverid){
+			nntp_close();
+			curserverid=sa->serverid;
+			host=nconfig.serv[curserverid];
+		}
+		ari->anum=sa->articlenum;
+		ari->bytestot=sa->bytes;
+		ari->linestot=sa->lines;
+		PDEBUG(DEBUG_MED,"trying server %lu article %lu",sa->serverid,sa->articlenum);
+		nntp_doopen();
+		nntp_dogroup(0);
+		if (stdputline(debug>=DEBUG_MED,"ARTICLE %li",sa->articlenum)/100!=2){//if error retrieving from one server, try another that has it
+			printf("error retrieving article %li: %s\n",sa->articlenum,cbuf);
+//			return -1;
+		}else
+			break;//this server seems to have it, so lets get it.  (errrors durring d/l will be handled by the standard retry stuff in nget.cc)
+	}
+	if (sapi == sap.rend()){
+		printf("couldn't get %s from anywhere\n",part->messageid.c_str());
 		return -1;
 	}
+#ifdef FILE_DEBUG
+	{
+		char *sav;
+		asprintf(&sav,"/tmp/%s.%li-%lu.%lu.log.gz",group->group.c_str(),part->date,sa->serverid,sa->articlenum);
+		sock.file_debug->start(sav);
+		free(sav);
+//		sock.file_debug->purge();
+	}
+	sock.file_debug->DEBUGLOGPUTF("doarticle %lu....",ari->anum);
+#endif
 	list<char *> buf;
 	list<char *>::iterator curb;
 	char *p,*lp;
@@ -320,11 +453,9 @@ int c_prot_nntp::nntp_doarticle(arinfo*ari,arinfo*toti,char *fn){
 			lp=cbuf;
 		ari->bytesdone+=glr;
 		ari->linesdone++;
-		if (toti){
-			toti->bytesdone+=glr;
-//			if (!header)
-//				toti->linesdone++;
-		}
+#ifdef FILE_DEBUG
+		sock.file_debug->DEBUGLOGPUTF("%s %lu bytes %lu(%lu): %s",header?"header":"line",ari->linesdone,glr,ari->bytesdone,cbuf);
+#endif
 		if (header && lp[0]==0){
 //			printf("\ntoasted header statssssssss\n");
 			header=0;
@@ -346,15 +477,29 @@ int c_prot_nntp::nntp_doarticle(arinfo*ari,arinfo*toti,char *fn){
 		ari->print_retrieving_articles(curt,toti);
 		printf("\n");
 	}
-	if ((ari->bytesdone!=ari->bytestot && ari->bytesdone+1!=ari->bytestot) || ari->linesdone!=ari->linestot){//I seem to get a lot of times where I retrieve one byte less than it says there is.
+	if ((ari->bytesdone > ari->bytestot+2 || ari->bytesdone+2 < ari->bytestot) || ari->linesdone!=ari->linestot){//some servers report # of bytes a bit off of what we expect.
 		printf("doarticle %lu: %lu!=%lu || %lu!=%lu\n",ari->anum,ari->bytesdone,ari->bytestot,ari->linesdone,ari->linestot);
+	}
+#ifdef FILE_DEBUG
+	sock.file_debug->DEBUGLOGPUTF("doarticle %lu: %lu(%lu),%lu(%lu)",ari->anum,ari->bytesdone,ari->bytestot,ari->linesdone,ari->linestot);
+	if (ari->linesdone!=ari->linestot)
+		sock.file_debug->save();
+	else
+		sock.file_debug->purge();
+//		sock.file_debug->save();
+#endif
+	if (ari->linesdone!=ari->linestot){
+		//throw new c_error(EX_T_ERROR,"nntp_getline:%i %s(%i)",i,strerror(errno),errno);
+		nntp_close();
+		//throw new c_error(EX_T_ERROR,"\nunequal line count %lu should equal %lu... please examine %s for errors before re-running\n",ari->linesdone,ari->linestot,fn);
+		throw new c_error(EX_T_ERROR,"\nunequal line count %lu should equal %lu.... aonetunaotheuntahoenuth\n",ari->linesdone,ari->linestot,fn);
 	}
 	if (!f.open(fn,O_CREAT|O_WRONLY|O_TRUNC,PRIVMODE)){
 		for(curb = buf.begin();curb!=buf.end();++curb){
 			p=(*curb);
 			if (f.putf("%s\n",p)<=0)
 				throw new c_error(EX_A_FATAL,"error writing %s: %s",fn,strerror(errno));
-			delete p;
+			delete [] p;
 		}
 		f.close();
 	}else
@@ -377,23 +522,41 @@ int uu_busy_callback(void *v,uuprogress *p){
 	if (!quiet) {printf(".");fflush(stdout);}
 	return 0;
 };
+/*void c_prot_nntp::nntp_queueretrieve(const char *match, ulong linelimit, int getflags){
+	//if (!(filec=gcache->getfiles(filec,grange,match,linelimit,getflags)))
+	c_regex_nosub *reg=new c_regex_nosub(match,REG_EXTENDED + ((getflags&GETFILES_CASESENSITIVE)?0:REG_ICASE));
+	if (!reg)
+		throw new c_error(EX_A_FATAL,"couldn't allocate regex");
+	if (reg->geterror()){
+		char buf[256];
+		int e=reg->geterror();
+		reg->strerror(buf,256);
+		delete reg;
+		throw new c_error(EX_A_FATAL,"regex error %i:%s",e,buf);
+	}
+	nntp_pred *p=ecompose2(new e_land<bool>,
+			new e_binder2nd<e_nntp_file_lines<e_ge<ulong> > >(linelimit),
+			new e_binder2nd_p<e_nntp_file_subject<e_eq<string,c_regex_nosub*> > >(reg));
 
-void c_prot_nntp::nntp_queueretrieve(const char *match, int linelimit, int getflags){
-	if (!(filec=gcache->getfiles(filec,grange,match,linelimit,getflags)))
+	filec=gcache->getfiles(filec,grange,p,getflags);
+	delete p;
+	if (!filec)
 		throw new c_error(EX_U_WARN,"nntp_retrieve: no match for %s",match);
-}
+}*/
 
-void c_prot_nntp::nntp_retrieve(int doit){
+void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, const string &writelite){
 	if (!(filec) || filec->files.empty())
 		return;
-	
+
 	t_nntp_files_u::iterator curf;
-	c_nntp_file *f;
+	//c_nntp_file *f;
+	c_nntp_file::ptr f;
 
 	//hmm, maybe not now. //well, now we need to keep it around again, so we can set the read flag.  At least with the new cache implementation its not quite such a memory hog.
-	if (gcache){
-		delete gcache;gcache=NULL;//we don't need this anymore, so free up some (a lot) of mem
-	}
+//	if (gcache){
+//		gcache->dec_rcount();/*delete gcache;*/gcache=NULL;//we don't need this anymore, so free up some (a lot) of mem
+		gcache=NULL;
+//	}
 
 	if (!doit){
 		c_nntp_part *p;
@@ -401,40 +564,42 @@ void c_prot_nntp::nntp_retrieve(int doit){
 			f=(*curf).second;
 			p=(*f->parts.begin()).second;
 			//printf("%i/%i\t(%liB,%lil)\t%li\t%s\n",f->have,f->req,f->bytes,f->lines,p->i->date,p->i->subject.c_str());
-			printf("%li\t%i/%i\t%lil\t%li\t%s\t%s\n",p->articlenum,f->have,f->req,f->lines,p->date,f->subject.c_str(),f->author.c_str());
+			printf("%i/%i\t%lil\t%li\t%s\t%s\t%s\n",f->have,f->req,f->lines(),p->date,f->subject.c_str(),f->author.c_str(),p->messageid.c_str());
 		}
+		printf("%lu bytes in %u files\n",filec->bytes,filec->files.size());
 	}
 
 	if (doit){
-#ifdef SHORT_TEMPNAMES
 		t_id group_id;
 # ifdef CHECKSUM
 		group_id=CHECKSUM(0L, Z_NULL, 0);
 		//group_id=CHECKSUM(group_id,host.c_str(),host.size());
-		group_id=CHECKSUM(group_id,(Byte*)group.c_str(),group.size());
+		group_id=CHECKSUM(group_id,(Byte*)group->group.c_str(),group->group.size());
 # else
 		hash<const char*> H;
-		group_id=H(group.c_str());
+		group_id=H(group->group.c_str());
 # endif
-#endif
-		arinfo qtotinfo,ainfo;
+		quinfo qtotinfo;
+		arinfo ainfo;
 		time(&qtotinfo.starttime);
-		qtotinfo.linesdone=0;
+		qtotinfo.filesdone=0;
 //		qtotinfo.linestot=filec->lines;
-		qtotinfo.linestot=filec->files.size();
-		qtotinfo.bytesdone=0;
-		qtotinfo.bytestot=filec->bytes;
+		qtotinfo.filestot=filec->files.size();
+		qtotinfo.bytesleft=filec->bytes;
 		c_nntp_part *p;
 //		s_part_u *bp;
 		t_nntp_file_parts::iterator curp;
 		t_nntp_files_u::iterator lastf=filec->files.end();
 		char *fn;
+		if (!writelite.empty())
+			options |= GETFILES_NODECODE;
 		for(curf = filec->files.begin();curf!=filec->files.end();++curf){
 			int r;
 			if (lastf!=filec->files.end()){
 //				delete (*lastf).second;//new cache implementation uses pointers to the same data
 				filec->files.erase(lastf);
-				qtotinfo.linesdone++;
+				qtotinfo.filesdone++;
+				filec->bytes=qtotinfo.bytesleft;//update bytes in case we have an exception and need to restart.
 			}
 			lastf=curf;
 			f=(*curf).second;
@@ -447,37 +612,54 @@ void c_prot_nntp::nntp_retrieve(int doit){
 				//asprintf(&fn,"%s/%s-%s-%li-%li-%li",nghome.c_str(),host.c_str(),group.c_str(),fgnum,part,num);
 				p=(*curp).second;
 				if (derr){
-					qtotinfo.bytestot-=p->bytes;
+					qtotinfo.bytesleft-=p->bytes();
 					continue;
 				}
-#ifdef SHORT_TEMPNAMES
 				//asprintf(&fn,"./%lx-%lx.%03li-%li",group_id,f->sub_id,(*curp).first,p->anum);
 				//asprintf(&fn,"./%lx-%lx.%03li",group_id,H(f->subject.c_str()),(*curp).first);
-				asprintf(&fn,"./%lx-%lx.%03li",group_id,f->mid,(*curp).first);
-#else
-				asprintf(&fn,"./%s-%s-%li-%03li-%li",host.c_str(),group.c_str(),f->banum(),(*curp).first,p->articlenum);
-#endif
+				{
+					const char *usepath;
+					if (!writelite.empty())
+						usepath="";
+					else usepath=temppath.c_str();
+					if (options & GETFILES_TEMPSHORTNAMES)
+						asprintf(&fn,"%s%lx.%03i",usepath,group_id+f->fileid,(*curp).first);
+					else
+						asprintf(&fn,"%s%lx-%lx.%03i",usepath,group_id,f->fileid,(*curp).first);
+				}
 				if (!fexists(fn)){
-					ainfo.anum=p->articlenum;
+//					ainfo.anum=p->articlenum;//set in doarticle now.
 					ainfo.linesdone=0;
 					ainfo.bytesdone=0;
-					ainfo.linestot=p->lines;
-					ainfo.bytestot=p->bytes;
-					if (nntp_doarticle(&ainfo,&qtotinfo,fn)){
-						delete fn;
-						qtotinfo.bytestot-=p->bytes;
+//					ainfo.linestot=p->lines;
+//					ainfo.bytestot=p->bytes;
+					if (!writelite.empty()){
+						c_file_fd fw;
+						if (fw.open(writelite.c_str(),O_WRONLY|O_CREAT|O_APPEND,PRIVMODE)<0)
+							throw new c_error(EX_A_FATAL,"couldn't open %s",writelite.c_str());
+						nntp_dowritelite_article(fw,p,fn);
+						fw.close();
+						free(fn);
+						qtotinfo.bytesleft-=p->bytes();
+//						derr=-1;//skip this file..
+						continue;
+					}
+				    if ((options & GETFILES_NOCONNECT) || nntp_doarticle(p,&ainfo,&qtotinfo,fn)){
+						free(fn);
+						qtotinfo.bytesleft-=p->bytes();
 						derr=-1;//skip this file..
 						continue;
 					}
 				}else{
-					qtotinfo.bytestot-=p->bytes;
-					if (!quiet) printf("already have article %li\n",p->articlenum);
+//					qtotinfo.bytestot-=p->bytes;
+					if (!quiet) printf("already have article %s (%s)\n",p->messageid.c_str(),fn);
 				}
+				qtotinfo.bytesleft-=p->bytes();
 //				UULoadFile(fn,NULL,0);//load once they are all d/l'd
 				//				delete fn;
 				fnbuf.push_back(fn);
 			}
-			if (!derr){
+			if (!derr && !(options&GETFILES_NODECODE)){
 				if ((r=UUInitialize())!=UURET_OK)
 					throw new c_error(EX_A_FATAL,"UUInitialize: %s",UUstrerror(r));
 				UUSetOption(UUOPT_DUMBNESS,1,NULL);//we already put the parts in the correct order, so it doesn't need to.
@@ -501,15 +683,17 @@ void c_prot_nntp::nntp_retrieve(int doit){
 					//				printf("\ns:%x d:%x\n",uul->state,uul->uudet);
 					if (/*uul->uudet==PT_ENCODED &&*/ strcmp(uul->filename,"0001.txt")==0){
 						char *nfn;
-						asprintf(&nfn,"%i.txt",f->banum());//give it a (somewhat) more sensible name
+						//asprintf(&nfn,"%lu.txt",f->banum());//give it a (somewhat) more sensible name
+						asprintf(&nfn,"%lu.%i.txt",f->badate(),rand());//give it a (somewhat) more sensible name //TODO: make it better (rand? blahk.. message id ar somethng but it might contain bad chars)
 						UURenameFile(uul,nfn);
-						delete nfn;
+						free(nfn);
 					}else
 						r=UUInfoFile(uul,NULL,uu_info_callback);
 					r=UUDecodeFile(uul,NULL);
 					if (r==UURET_EXISTS){
 						char *nfn;
-						asprintf(&nfn,"%s.%i.%i",uul->filename,f->banum(),rand());
+						//asprintf(&nfn,"%s.%lu.%i",uul->filename,f->banum(),rand());
+						asprintf(&nfn,"%s.%lu.%i",uul->filename,f->badate(),rand());
 #ifdef	USE_FILECOMPARE	// We have a duplicate file name
 						// memorize the old file name
 						char	*old_fn;
@@ -526,13 +710,13 @@ void c_prot_nntp::nntp_retrieve(int doit){
 							}
 						}
 						// cleanup
-						delete	old_fn;
+						free(old_fn);
 
 #else	/* USE_FILECOMPARE */				// the orginal code
 						UURenameFile(uul,nfn);
 						r=UUDecodeFile(uul,NULL);
 #endif	/* USE_FILECOMPARE */
-						delete nfn;
+						free(nfn);
 					}
 					if (r!=UURET_OK){
 						derr++;
@@ -543,7 +727,8 @@ void c_prot_nntp::nntp_retrieve(int doit){
 //						if (!(f->flags&FILEFLAG_READ)){//if the flag is already set, don't force a save
 //							printf("&=%i",FILEFLAG_READ);
 //							f->flags|=FILEFLAG_READ;
-							grange->insert(f->banum());// should insert numbers for all parts, or not?  If all parts are sequential, it could actually reduce space, however if they aren't it would just waste a bunch of space.  The first num is the only one thats currently checked, so I guess I'll just leave it at that for now.
+//							grange->insert(f->banum());// should insert numbers for all parts, or not?  If all parts are sequential, it could actually reduce space, however if they aren't it would just waste a bunch of space.  The first num is the only one thats currently checked, so I guess I'll just leave it at that for now.
+						midinfo->insert(f->bamid());
 //							gcache->saveit=1;//make sure the flags get saved, even if the header file hasn't changed otherwise
 //						}
 //						printf("->%lx\n",f->flags);
@@ -558,14 +743,25 @@ void c_prot_nntp::nntp_retrieve(int doit){
 			else if (un==0){
 				printf("hm.. nothing decoded.. keeping temp files\n");
 				derr=-2;
-			}else if (derr==0 && !quiet)
-				printf("decoded ok, deleting temp files.\n");
+			}else if (derr==0){
+				if (options&GETFILES_KEEPTEMP){
+					if (!quiet)
+						printf("not decoding, keeping temp files.\n");
+					derr=1;
+				}
+				else if (options&GETFILES_NODECODE){
+					if (!quiet)
+						printf("decoded ok, keeping temp files.\n");
+					derr=1;
+				}else if (!quiet)
+						printf("decoded ok, deleting temp files.\n");
+			}
 			char *p;
 			for(fncurb = fnbuf.begin();fncurb!=fnbuf.end();++fncurb){
 				p=(*fncurb);
 				if (!derr)
 					unlink(p);
-				delete p;
+				free(p);
 			}
 		}
 	}
@@ -573,74 +769,76 @@ void c_prot_nntp::nntp_retrieve(int doit){
 	cleanupcache();
 }
 void c_prot_nntp::nntp_auth(void){
-	if (user.size()<=0){
+	/*if (user.size()<=0){
 		string fn=nghome+"/"+host+"/.authinfo";
 		c_file_fd f;
 		f.initrbuf(256);
 		if (!f.open(fn.c_str(),O_RDONLY)){
 //			char buf[256];
 			if (f.bgets()){
-				user=f.rbufp;
+				user=f.rbuffer->rbufp;
 				if (f.bgets()){
 //					buf[strlen(buf)]=0;
-					pass=f.rbufp;
+					pass=f.rbuffer->rbufp;
 				}
 			}
 			f.close();
 		}
 	}
-	nntp_doauth(user.c_str(),pass.c_str());
+	nntp_doauth(user.c_str(),pass.c_str());*/
+	nntp_doauth(host->user.c_str(),host->pass.c_str());
 }
 void c_prot_nntp::nntp_doauth(const char *user, const char *pass){
 	int i;
-	
+
 	if(!user){
 		nntp_close();
 		throw new c_error(EX_U_FATAL,"nntp_doauth: no authorization info known");
 	}
-	putline(1,"AUTHINFO USER %s",user);
-	i=getreply(1);
-	if (i==350 || i==381){ 
+	putline(!quiet,"AUTHINFO USER %s",user);
+	i=getreply(!quiet);
+	if (i==350 || i==381){
 		if(!pass){
 			nntp_close();
 			throw new c_error(EX_U_FATAL,"nntp_doauth: no password known");
 		}
 		putline(0,"AUTHINFO PASS %s",pass);
-		printf(">AUTHINFO PASS *\n");
-		i=getreply(1);
+		if (!quiet)
+			printf(">AUTHINFO PASS *\n");
+		i=getreply(!quiet);
 	}
 	chkreply(i);
 	authed=1;
 }
 
-void c_prot_nntp::nntp_open(const char *h,const char *u,const char *p){
-	nntp_close();
-	host=h;
-	if (u)
-		user=u;
-	if (p)
-		pass=p;
+void c_prot_nntp::nntp_open(c_server *h){
+	if (h!=host){
+		nntp_close();
+		host=h;
+	}
 }
 
 void c_prot_nntp::nntp_doopen(void){
 	//if (ch<0){
 	if (!sock.isopen()){
-		if(host.size()<=0){
+		//if(host.size()<=0){
+		if(!host){
 			throw new c_error(EX_U_FATAL,"nntp_doopen: no host selected");
 		}
 		time(&lasttime);
 		int i;
 	//	if((ch=make_connection("nntp",SOCK_STREAM,host.c_str(),NULL,cbuf,cbuf_size))<0){
-		if((i=sock.open(host.c_str(),"nntp"))<0){
+		if((i=sock.open(host->addr.c_str(),"nntp"))<0){
 			//throw -1;
 			//throw new c_error(EX_T_FATAL,"make_connection:%i %s(%i)",i,strerror(errno),errno);
 			throw new c_error(EX_T_ERROR,"make_connection:%i %s(%i)",i,strerror(errno),errno);
 		}
-		chkreply(getreply(1));
+		chkreply(getreply(!quiet));
 		putline(debug>=DEBUG_MED,"MODE READER");
 		getline(debug>=DEBUG_MED);
 		groupselected=0;
 		authed=0;
+		curserverid=host->serverid;
 	}
 }
 
@@ -650,15 +848,18 @@ void c_prot_nntp::nntp_close(int fast){
 //	}
 	if (sock.isopen()){
 		if (!fast)
-			putline(1,"QUIT");
+			putline(!quiet,"QUIT");
 			//putline(debug,"QUIT");
 		sock.close();
 	}
+	curserverid=0;
 }
 
 void c_prot_nntp::cleanupcache(void){
-	if(grange){delete grange;grange=NULL;}
-	if(gcache){delete gcache;gcache=NULL;}
+	//if(grange){delete grange;grange=NULL;}
+//	if(gcache){gcache->dec_rcount();/*delete gcache;*/gcache=NULL;}
+	gcache=NULL;//ref counted.
+	if (midinfo){delete midinfo;midinfo=NULL;}
 	if(filec){delete filec;filec=NULL;}
 }
 void c_prot_nntp::cleanup(void){
@@ -672,17 +873,31 @@ void c_prot_nntp::cleanup(void){
 	cleanupcache();
 }
 
+void c_prot_nntp::initready(void){
+//	midinfo=new c_mid_info((nghome + ".midinfo"));
+}
 c_prot_nntp::c_prot_nntp(void){
 //	cbuf=new char[4096];
 //	cbuf_size=4096;
-	grange=NULL;
+	//grange=NULL;
 	gcache=NULL;
 //	ch=-1;
+#ifdef FILE_DEBUG
+	sock.file_debug=new c_debug_file;
+#endif
 	sock.initrbuf(4096);
 	filec=NULL;
 	authed=0;
+	curserverid=0;
+	host=NULL;
+	midinfo=NULL;
 }
 c_prot_nntp::~c_prot_nntp(void){
 //	printf("nntp destructing\n");
+//	if (midinfo)delete midinfo;
 	cleanup();
+#ifdef FILE_DEBUG
+	sock.file_debug->purge();
+	delete sock.file_debug;
+#endif
 }

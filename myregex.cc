@@ -1,6 +1,6 @@
 /*
     myregex.* - regex() wrapper class
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,68 +16,125 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #include <stdlib.h>
 #include "myregex.h"
 
-int c_regex::match(const char *str){
-	int i;
-	if ((i=regexec(regex,str,nregmatch,regmatch,0)))
-	     return i;
+size_t c_regex_error::strerror(char *buf,size_t bufsize){
+//	if (regex)
+		return regerror(re_err,regex,buf,bufsize);
+/*	else{//dunno if all this is needed
+		if(buf){
+			strncpy(buf,"null regex_t*",bufsize-1);
+			buf[bufsize-1]=0;//buf is null terminated
+		}
+		return 14;//returns the size of the errbuf required to contain the null-terminated  error message string.
+	}*/
+}
+
+c_regex_base::c_regex_base(const char * pattern,int cflags){
+	if (!pattern)
+		pattern="";
+	regex=new regex_t;
+	int re_err;
+	if ((re_err=regcomp(regex,pattern,cflags))){
+//		throw re_err;
+		c_regex_error*err=new c_regex_error(re_err,regex);
+		regex=NULL;//set NULL so dtor won't free
+//		exit(10);
+		throw err;
+	}
+}
+c_regex_base::~c_regex_base(){
+	if (regex) {regfree(regex);delete regex;regex=NULL;}
+}
+c_regex_nosub::c_regex_nosub(const char * pattern,int cflags):c_regex_base(pattern,cflags|REG_NOSUB){
+}
+
+int c_regex_subs::doregex(regex_t *regex,const char *str){
+	if ((re_err=regexec(regex,str,nregmatch,regmatch,0)))
+	     return re_err;
 	freesub();
 	rnsub=regex->re_nsub;
+	assert(nregmatch>=rnsub);
 	if (rnsub>=0 && nregmatch){
-		rsub=new (string*)[rnsub+1];
+		int i;
+		//rsub=new (string*)[rnsub+1];
+		rsub=new string[rnsub+1];
 		for (i=0;i<=rnsub;i++){
-//			rsub[i].spf("%.*s",regmatch[i].rm_eo-regmatch[i].rm_so,str+regmatch[i].rm_so);
-//			rsub[i].append(str+regmatch[i].rm_so,regmatch[i].rm_eo-regmatch[i].rm_so);
-			rsub[i]=new string(str+regmatch[i].rm_so,regmatch[i].rm_eo-regmatch[i].rm_so);
+			assert(regmatch[i].rm_eo>=regmatch[i].rm_so);
+//			printf("doregex: i=%i/%i so=%i eo=%i\n",i,rnsub,regmatch[i].rm_so, regmatch[i].rm_eo);
+//
+			if (regmatch[i].rm_so>=0)
+				rsub[i].assign(str+regmatch[i].rm_so,regmatch[i].rm_eo-regmatch[i].rm_so);
 		}
 	}
 	return 0;
 }
-c_regex::c_regex(const char * pattern,int cflags){
-	int i;
-	if (!pattern)
-		pattern="";
-	regex=new regex_t;
-	i=regcomp(regex,pattern,cflags);
-	rnsub=-1;
-	if (i){
-		nregmatch=-1;
-		return;
+void c_regex_subs::setnregmatch(int num){
+	if (nregmatch!=num){
+		if (regmatch)
+			delete [] regmatch;
+		nregmatch=num;
+		if (nregmatch>0)
+			regmatch=new regmatch_t[nregmatch+1];
+		else
+			regmatch=NULL;
 	}
+}
+c_regex_subs::c_regex_subs(int nregm):nregmatch(-1){
+	regmatch=NULL;
+	setnregmatch(nregm);
+	rsub=NULL;
+	rnsub=-1;
+}
+c_regex_subs::~c_regex_subs(){
+	freesub();
+//	if (regex) regfree(regex);//handled by c_regex_base
+	if (regmatch){
+		delete [] regmatch;
+//		free(regmatch);
+	}
+}
+void c_regex_subs::freesub(void){
+	if (rsub){
+//		for (int i=0;i<=rnsub;i++){
+//			delete rsub[i];
+//		}
+		delete [] rsub;
+	}
+	rsub=NULL;
+	rnsub=-1;
+}
+
+int c_regex_r::match(const char *str,c_regex_subs*subs){
+#ifdef _REENTRANT
+	c_mutex_locker lock(mutex);//I dunno wether regexec is reentrant, so lets be safe.
+#endif
+	subs->setnregmatch(nregmatch);
+	return subs->doregex(regex,str);
+}
+c_regex_subs * c_regex_r::match(const char *str){
+	c_regex_subs *subs=new c_regex_subs(nregmatch);
+//	subs->doregex(regex,str,nregmatch);
+	match(str,subs);
+	return subs;
+}
+c_regex_r::c_regex_r(const char * pattern,int cflags):c_regex_base(pattern,cflags){
 	if (cflags&REG_NOSUB){
 		nregmatch=0;
-		regmatch=NULL;
 	}else{
 		nregmatch=1;
 		for (;*pattern!=0;pattern++){
 			if (*pattern=='(')//this could give more regmatches than we need, considering 
 				nregmatch++;//escaping and such, but its a lot better than a static number
 		}
-		//	if (nregmatch)
-		regmatch=new regmatch_t[nregmatch+2];
-		//	regmatch= (regmatch_t*) malloc(sizeof(regmatch_t)*(nregmatch+2));
+//pcre needs more matching space for something?
+#ifdef HAVE_PCREPOSIX_H
+		//nregmatch=nregmatch*15/10;
+		nregmatch=nregmatch*2;
+#endif
 	}
-};
-c_regex::~c_regex(){
-	freesub();
-	regfree(regex);
-	if (regmatch){
-		delete regmatch;
-//		free(regmatch);
-	}
-};
-void c_regex::freesub(void){
-	if (rnsub>=0 && nregmatch){
-		for (int i=0;i<=rnsub;i++){
-			delete rsub[i];
-		}
-		delete rsub;
-	}
-	rsub=NULL;
-	rnsub=-1;
-};
+}

@@ -18,7 +18,7 @@
 */
 #ifndef _DATFILE_H_
 #define _DATFILE_H_
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #include <string>
@@ -28,30 +28,14 @@
 #include <map.h>
 #endif
 #include <stdio.h>
-
-#ifdef HAVE_HASH_MAP_H
-struct eqstr 
-{
-    bool operator()(const char* s1, const char* s2) const 
-	{
-	    return strcmp(s1, s2) == 0;
-	}
-};
-#else
-struct ltstr
-{
-        bool operator()(const char* s1, const char* s2) const
-	  {
-                  return strcmp(s1, s2) < 0;
-	  }
-};
-#endif
+#include "stlhelp.h"
+#include "file.h"
 
 class c_data_item
 {
 	public:
 		string key;
-		string str; 
+		string str;
 		long i;
 		int ierr;//0=no error;-1=error after converting some;-2=not at all;-3=never been set
 		int type;
@@ -64,12 +48,12 @@ class c_data_item
 		{
 			set(s);
 			type=0;
-		};    
+		};
 		c_data_item(const char *k, long l):key(k)
 		{
 			set(l);
 			type=0;
-		};    
+		};
 		void set(long l)
 		{
 			str="";
@@ -77,6 +61,24 @@ class c_data_item
 			ierr=0;
 		};
 		void set(const char *val);
+/*		bool compareval(c_data_item &it){
+			if (it.type==0 && type==0 && it.ierr==ierr){
+				switch(ierr){
+					case 0:
+						if (i==it.i) return 1;
+						break;
+					case -3:
+						return 1;
+					default:
+						if (str==it.str)return 1;
+				}
+			}
+			return 0;
+		}
+		bool compareall(c_data_item &it){
+			if (compareval(it) && key==it.key)return 1;
+			return 0;
+		}*/
 };
 
 #ifdef HAVE_HASH_MAP_H
@@ -100,6 +102,16 @@ class c_data_section: public c_data_item
 		if (i && i->type==0 && i->ierr==0) {*l=i->i;return 0;}
 		return -1;
 	};
+	int getitemul(const char *name,unsigned long *l){
+		c_data_item *i=rgetitem(name);
+		if (i && i->type==0 && i->ierr==0) {*l=i->i;return 0;}
+		return -1;
+	};
+	string getitems(string name){
+		c_data_item *i=rgetitem(name.c_str());
+		if (i && i->type==0) return i->str;
+		return "";
+	};
 	const char *getitema(const char *name){
 		c_data_item *i=rgetitem(name);
 		if (i && i->type==0) return i->str.c_str();
@@ -121,7 +133,9 @@ class c_data_section: public c_data_item
 	int delitem(const char *name){
 		return delitem(data.find(name));
 	}
-	
+
+    void read_list(c_file *f);
+    void save_list(int &r,FILE *f,const char *cname,const char*termin="\n");
     void cleanup(void);
     c_data_section(const char *k):c_data_item(k)
 	{
@@ -149,12 +163,10 @@ class c_data_file
 
     void setfilename(const char * f);
 
-    void read_list(char *buf,int len,FILE *f, c_data_section *c);
     void read(void);
-    void save_list(int &r,FILE *f, c_data_section *c,const char *cname);
     void save(void);
 
-    
+
 //    c_data_section* find (char*section);
 //    c_data_section* find (char*format,...);
 

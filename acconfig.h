@@ -10,17 +10,23 @@
 /* Define to `unsigned long' if <sys/types.h> doesn't define.  */
 #undef ulong
 
+/* Define to `unsigned char' if <sys/types.h> doesn't define.  */
+#undef uchar
+
 /* define if `timezone' is an integer var defined in time.h */
 #undef TIMEZONE_IS_VAR
 
-/* use shorter filenames for tempfiles */
-#undef SHORT_TEMPNAMES
+/* define if `_timezone' is an integer var defined in time.h */
+#undef _TIMEZONE_IS_VAR
 
 /* checksum method to use */
 #undef CHECKSUM
 
 /* compare duplicate files? */
 #undef USE_FILECOMPARE
+
+/* debug mode? */
+#undef NDEBUG
 
 @BOTTOM@
 

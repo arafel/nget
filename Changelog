@@ -1,3 +1,45 @@
+nget (0.8) unstable; urgency=low
+
+  * nget version 0.8 released on 2000-04-12. (sorry about that wait.)
+  * fullxover server option to try to fill in gaps in header lists, for servers
+    that don't always add headers in order.
+  * Now compiles under cygwin. (Though due to ommisions in the exports for the
+    cygwin library, it needs the files in glob/, and you will need to d/l
+    libpcre (or perhaps another regex library..), and probably libpopt) 
+  * Added -N to allow decoding of parts gotten with -K or -w/ngetlite without
+    connecting to server for unretrieved parts.
+  * Changed -d operation to support dupechecking in any combination of existing
+    files and parts already downloaded.
+  * Added -w to write a list of parts to then be gotten with ngetlite.
+  * Added ngetlite program for use on comps with older compilers and/or less
+    memory. (Still requires you write a list of parts to get with nget -w)
+  * Added -P to use a different directory for temp files.
+  * Added -L/-S to support filesystems that can't handle the longer tempfile
+    names.
+  * Fixed bug that occasionaly caused a file to be corrupted (split line).
+  * Now uses ~/.nget3 directory, since config/cache formats have changed.
+  * Improved multi-server support that can piece together seperate parts from
+    multiple servers.
+  * Added -k and -K to keep temp files around or not decode at all.
+  * Added -R to retrieve based upon any number of rules.
+  * Added libpopt support.
+  * Added -@ option to read commands from a file (only available with libpopt,
+    getopt is not reentrant)
+  * Added -s option to specify retry delay.
+  * Now aborts on invalid regex entry, instead of segfaulting.
+  * Added ability to specify a port in the standard host:port method. (reminded
+    by Pete Bentley)
+  * Xover consistancy check now allows extra whitespace in numeric fields (Pete
+    Bentley) (actually, it allows whitespace anywhere in the field.. could
+	probably be improved to only allow it at the end (maybe at the beginning?)
+	but I'm not gonna go to that much trouble.)
+  * Fixed complete bombing out on bad xover, instead of skipping the header
+    like it should have. (reported by Pete Bentley)
+  * Fixed a bug that would occasionally split parts from one multipart posting
+    into two seperate groups.
+
+ -- Matt Mueller <donut@azstarnet.com>  Thu, 15 Jul 1999 03:24:54 -0700
+
 nget (0.7) unstable; urgency=low
 
   * Stores file read info in a seperate file, so it does not need to resave the

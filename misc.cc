@@ -1,6 +1,6 @@
 /*
     misc.* - misc functions
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #ifdef WRFTP
@@ -32,6 +32,33 @@
 #include <errno.h>
 #include "myregex.h"
 
+#ifdef HAVE_CONFIG_H
+#ifndef HAVE_ASPRINTF
+#include <stdarg.h>
+int asprintf(char **str,const char *format,...){
+	int l;
+	va_list ap;
+
+	va_start(ap,format);
+	l=vasprintf(str,format,ap);
+	va_end(ap);
+	return l;
+}
+#endif
+#ifndef HAVE_VASPRINTF
+int vasprintf(char **str,const char *format,va_list ap){
+#ifndef _REENTRANT
+	static
+#endif
+		char buf[4096];
+	int l;
+	l=vsprintf(buf,format,ap);
+	*str=(char*)malloc(l+1);
+	memcpy(*str,buf,l+1);
+	return l;
+}
+#endif
+
 #ifndef HAVE_LOCALTIME_R
 struct tm * localtime_r(const time_t *t,struct tm * tmu){
 	struct tm *t1=localtime(t);
@@ -40,8 +67,14 @@ struct tm * localtime_r(const time_t *t,struct tm * tmu){
 	return tmu;
 }
 #endif
-#ifdef TIMEZONE_IS_VAR 
+#endif//HAVE_CONFIG_H
+
+#if (defined(TIMEZONE_IS_VAR) || defined(_TIMEZONE_IS_VAR))
+#ifdef TIMEZONE_IS_VAR
 #define my_timezone timezone
+#else
+#define my_timezone _timezone
+#endif
 void init_my_timezone(void){
 //	printf("my_timezone=%li\n",my_timezone);
 }
@@ -82,6 +115,7 @@ int dobackup(const char * name){
 	//###### TODO: use crope/basic_string?
 //   char buf[FTP_PATH_LEN];
    char buf[256];
+   assert(strlen(name)+1<sizeof(buf));
    strcpy(buf,name);
    strcat(buf,"~");
    return rename(name,buf);
@@ -99,8 +133,28 @@ const char * getfname(const char * src){
 int fexists(const char * f){
 	struct stat statbuf;
 	return (!stat(f,&statbuf));
-	
 }
+const char *fsearchpath(const char * f,const char **paths,int flags){
+	char *s;
+	int i;
+	if (!f) return NULL;
+	if (f[0]!='~' && f[0]!='/' && (flags&FSEARCHPATH_ALLOWDIRS || strchr(f,'/')==NULL))
+		for (i=0;paths[i];i++){
+			asprintf(&s,"%s/%s",paths[i],f);
+//			PDEBUG(DEBUG_MIN,"fsearchpath:%s",s);
+			if (fexists(s))
+				return s;
+			free(s);
+		}
+//	PDEBUG(DEBUG_MIN,"fsearchpath:%s",f);
+	if (fexists(f)){
+//		asprintf(&s,"%s",f);
+//		return s;
+		return f;//not dynamically allocated
+	}
+	return NULL;
+}
+
 int testmkdir(const char * dir,int mode){
 	struct stat statbuf;
 	if (stat(dir,&statbuf)){
@@ -109,7 +163,27 @@ int testmkdir(const char * dir,int mode){
 		return ENOTDIR;
 	}
 	return 0;
-}																	
+}
+char *goodgetcwd(char **p){
+	/*int t=-1;
+	*p=NULL;//first we try to take advantage of the GNU extension to allocate it for us.
+	while (!(*p=getcwd(*p,t))) {
+		t+=100;
+		if (!(*p=(char*)realloc(*p,t))){
+			PERROR("realloc error %s",strerror(errno));exit(1);
+		}
+	}*/
+	int t=0;
+	*p=NULL;//ack, that extension seems to like segfaulting when you free() its return.. blah.
+	do {
+		t+=48;
+		if (!(*p=(char*)realloc(*p,t))){
+			PERROR("realloc error %s",strerror(errno));exit(1);
+		}
+	}while(!(*p=getcwd(*p,t)));
+	PDEBUG(DEBUG_MED,"goodgetcwd %i %s(%p-%p)",t,*p,p,*p);
+	return *p;
+}
 
 int do_utime(const char *f,time_t t){
 	struct utimbuf buf;
@@ -131,6 +205,7 @@ size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%m
 //	return timestr;
 }
 
+#ifdef HAVE_CONFIG_H
 #ifndef HAVE_STRERROR
 //extern int _sys_nerr;
 //extern const char *const _sys_errlist[];
@@ -140,12 +215,14 @@ const char * strerror(int err){
 //	else if (err<0)
 //	     return "min errno exceeded";
 //	else
-//	     return _sys_errlist[err];	
+//	     return _sys_errlist[err];
 	static char buf[5];
 	sprintf(buf,"%i",err);
 	return buf;
 }
-#endif 
+#endif
+#endif
+
 // threadsafe.
 char * goodstrtok(char **cur, char sep){
 //   static char * cur=NULL;
@@ -161,6 +238,21 @@ char * goodstrtok(char **cur, char sep){
    tmp[0]=0;
    *cur=tmp+1;
    return old;
+}
+strtoker::strtoker(int num,char tok){
+	toks=new char*[num];
+	maxtoks=num;
+	numtoks=0;
+	tokchar=tok;
+}
+int strtoker::tok(char *str){
+	for (numtoks=0;numtoks<maxtoks;numtoks++)
+		if ((toks[numtoks]=goodstrtok(&str,tokchar))==NULL)
+			return 0;
+	if (str)
+		return -1;//maxtoks wasn't enough.
+	else
+		return 0;//done.
 }
 
 char txt_exts[]=".txt.cpp.c.cc.h.pas.htm.html.pl.tcl";
@@ -245,50 +337,62 @@ int decode_texttz(const char * buf){
 //3 Jun 1999 12:35:14 -0500 ; non padded day. blah.
 //Tue, 1 Jun 1999 20:36:29 +0100 ; blah again
 //Sun, 23 May 1999 19:34:35 -0500 ; ack, timezone
+//12 July 1999 01:23:05 GMT // full length month
+//Sun, 15 Aug 1999 19:56 +0100 (BST) // no seconds
 
 //Sunday,
 // 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
 //Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format (note, this is used by ls -l --full-time)
 //Jan  4 17:11 			;ls -l format, 17:11 may be replaced by " 1998"
+
+//easy format 06/11/94[ 23:34[:23][ -300]]
 //c_regex rfc1123("^[A-Za-z, ]*([0-9]{1,2}) (...) ([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (.*)$"),
 //	rfc850("^[A-Za-z, ]*([0-9]{1,2})-(...)-([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (.*)$"),
-c_regex xrfc("^[A-Za-z, ]*([0-9]{1,2})[- ](...)[- ]([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) *(.*)$"),
-	xasctime("^[A-Za-z, ]*(...) +([0-9]{1,2}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) ([0-9]{2,4}) *(.*)$"),
-	xlsl("^(...) +([0-9]{1,2}) +([0-9:]{4-5})$")
+//#define TIME_REG "([0-9]{1,2}):([0-9]{2}):([0-9]{2})"
+
+//allows for optional seconds
+#define TIME_REG2 "([0-9]{1,2}):([0-9]{2})(:([0-9]{2}))?"
+c_regex_r xrfc("^[A-Za-z, ]*([0-9]{1,2})[- ](.{3,9})[- ]([0-9]{2,4}) "TIME_REG2" *(.*)$"),
+	xasctime("^[A-Za-z, ]*(...) +([0-9]{1,2}) "TIME_REG2" ([0-9]{2,4}) *(.*)$"),
+	xlsl("^(...) +([0-9]{1,2}) +([0-9:]{4,5})$"),
+	xeasy("^([0-9]{1,4})[-/]([0-9]{1,2})[-/]([0-9]{2,4})( *"TIME_REG2" *(.*))?$");
+c_regex_nosub xtime_t("^[0-9]+$")//seconds since 1970 (always gmt)
 		;
 time_t decode_textdate(const char * cbuf){
 	struct tm tblock;
 	memset(&tblock,0,sizeof(struct tm));
 	char *tdt=NULL;
 	int td_tz=0;
-	if (!xrfc.match(cbuf)){
+	int yearlen=0;
+	c_regex_subs rsubs;
+	if (!xrfc.match(cbuf,&rsubs)){
 		tdt="xrfc*-date";
-		tblock.tm_mday=atoi(xrfc.subs(1));
-		tblock.tm_mon=decode_textmonth(xrfc.subs(2));
-		tblock.tm_year=atoi(xrfc.subs(3));
-		if(xrfc.sublen(3)>=4)
-			tblock.tm_year-=1900;
-		tblock.tm_hour=atoi(xrfc.subs(4));
-		tblock.tm_min=atoi(xrfc.subs(5));
-		tblock.tm_sec=atoi(xrfc.subs(6));
-		td_tz=decode_texttz(xrfc.subs(7));
-		xrfc.freesub();
-	}else if (!xasctime.match(cbuf)){
+		tblock.tm_mday=atoi(rsubs.subs(1));
+		tblock.tm_mon=decode_textmonth(rsubs.subs(2));
+		tblock.tm_year=atoi(rsubs.subs(3));
+		yearlen=rsubs.sublen(3);
+		tblock.tm_hour=atoi(rsubs.subs(4));
+		tblock.tm_min=atoi(rsubs.subs(5));
+		if(rsubs.sublen(6)>0)
+			tblock.tm_sec=atoi(rsubs.subs(7));
+		td_tz=decode_texttz(rsubs.subs(8));
+//		xrfc.freesub();
+	}else if (!xasctime.match(cbuf,&rsubs)){
 		tdt="asctime-date";
-		tblock.tm_mon=decode_textmonth(xasctime.subs(1));
-			tblock.tm_mday=atoi(xasctime.subs(2));
-		tblock.tm_hour=atoi(xasctime.subs(3));
-		tblock.tm_min=atoi(xasctime.subs(4));
-		tblock.tm_sec=atoi(xasctime.subs(5));
-		tblock.tm_year=atoi(xasctime.subs(6));
-		if(xasctime.sublen(6)>=4)
-			tblock.tm_year-=1900;
-		xasctime.freesub();
-	}else if (!xlsl.match(cbuf)){
+		tblock.tm_mon=decode_textmonth(rsubs.subs(1));
+			tblock.tm_mday=atoi(rsubs.subs(2));
+		tblock.tm_hour=atoi(rsubs.subs(3));
+		tblock.tm_min=atoi(rsubs.subs(4));
+		if(rsubs.sublen(5)>0)
+			tblock.tm_sec=atoi(rsubs.subs(6));
+		tblock.tm_year=atoi(rsubs.subs(7));
+		yearlen=rsubs.sublen(7);
+//		xasctime.freesub();
+	}else if (!xlsl.match(cbuf,&rsubs)){
 		tdt="ls-l-date";
-		tblock.tm_mon=decode_textmonth(xlsl.subs(1));
-		tblock.tm_mday=atoi(xlsl.subs(2));
-		if (xlsl.subs(3)[2]==':'){
+		tblock.tm_mon=decode_textmonth(rsubs.subs(1));
+		tblock.tm_mday=atoi(rsubs.subs(2));
+		if (rsubs.subs(3)[2]==':'){
 			struct tm lt;
 #ifdef CURTIME
             localtime_r(&CURTIME,&lt);
@@ -297,17 +401,49 @@ time_t decode_textdate(const char * cbuf){
 			time(&curtime);
             localtime_r(&curtime,&lt);
 #endif
-			tblock.tm_hour=atoi(xlsl.subs(3));
-			tblock.tm_min=atoi(xlsl.subs(3)+3);
+			tblock.tm_hour=atoi(rsubs.subs(3));
+			tblock.tm_min=atoi(rsubs.subs(3)+3);
 
 			if (lt.tm_mon>=tblock.tm_mon)
 			     tblock.tm_year=lt.tm_year;
 			else
 			     tblock.tm_year=lt.tm_year-1;
 		}else{
-			tblock.tm_year=atoi(xlsl.subs(3))-1900;
+			yearlen=rsubs.sublen(3);
+			tblock.tm_year=atoi(rsubs.subs(3));
 		}
+	}else if (!xeasy.match(cbuf,&rsubs)){
+		tdt="easy-date";
+		int a=atoi(rsubs.subs(1)),b=atoi(rsubs.subs(2)),c=atoi(rsubs.subs(3));
+		if((rsubs.sublen(1)>2 || a>12 || a<=0) && (b>=1 && b<=12 && c>=1 && c<=31)){
+			//year/mon/day format...
+			tblock.tm_mon=b-1;
+			tblock.tm_mday=c;
+			tblock.tm_year=a;
+			yearlen=rsubs.sublen(1);
+		}else{
+			//mon/day/year format...
+			tblock.tm_mon=a-1;
+			tblock.tm_mday=b;
+			tblock.tm_year=c;
+			yearlen=rsubs.sublen(3);
+		}
+		if(rsubs.sublen(4)>0){
+			tblock.tm_hour=atoi(rsubs.subs(5));
+			tblock.tm_min=atoi(rsubs.subs(6));
+			if(rsubs.sublen(7)>0){
+				tblock.tm_sec=atoi(rsubs.subs(8));
+			}
+			td_tz=decode_texttz(rsubs.subs(9));
+		}
+	}else if (!xtime_t.match(cbuf)){
+		tdt="time_t-date";
+		return atol(cbuf);
 	}
+	if(yearlen>=4)
+		tblock.tm_year-=1900;
+	else if(yearlen==2 && tblock.tm_year<70)
+		tblock.tm_year+=100;//assume anything before (19)70 is 20xx
 	if(!tdt){
 		PERROR("decode_textdate: unknown %s",cbuf);
 		return 0;
@@ -332,7 +468,7 @@ time_t decode_textdate(const char * cbuf){
 		     tblock.tm_mday=atoi(cbuf+4);
 		if (cbuf[9]==':'){
 			struct tm lt;
-			
+
 #ifdef CURTIME
             localtime_r(&CURTIME,&lt);
 #else

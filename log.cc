@@ -1,5 +1,5 @@
 /*
-    nget - command line nntp client
+    log.* - debug/error logging and exception defines
     Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
@@ -16,23 +16,21 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
-#ifndef _NGET_H_
-#define _NGET_H_
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include "log.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include "misc.h"
 
-//#include "server.h"
-//#include "datfile.h"
-
-//extern c_data_file cfg;
-extern time_t lasttime;
-extern string nghome;
-/*extern c_server_list servers;
-extern c_group_info_list groups;
-extern c_server_priority_grouping_list priogroups;*/
-
-#define PRIVMODE (S_IRUSR | S_IWUSR)
-#define PUBMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
-
-#endif
+int quiet=0,debug=0;
+c_error::c_error(int n, const char * s, ...){
+	va_list ap;
+	num=n;
+	va_start(ap,s);
+	vasprintf(&str,s,ap);
+	va_end(ap);
+//	printf("c_error %i constructed: %s\n",num,str);
+}
+c_error::~c_error(){
+	if (str) free(str);
+	//printf("c_error %i deconstructed\n",num);
+};

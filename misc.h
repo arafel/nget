@@ -1,6 +1,6 @@
 /*
     misc.* - misc functions
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 */
 #ifndef _MISC_H_
 #define _MISC_H_
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 //misc.h
@@ -30,6 +30,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef HAVE_CONFIG_H
+#ifndef HAVE_ASPRINTF
+int asprintf(char **str,const char *format,...);
+#endif
+#ifndef HAVE_VASPRINTF
+#include <stdarg.h>
+int vasprintf(char **str,const char *format,va_list ap);
+#endif
 #ifndef HAVE_ATOUL
 inline ulong atoul(const char *str){return strtoul(str,NULL,10);}
 #endif
@@ -37,7 +45,8 @@ inline ulong atoul(const char *str){return strtoul(str,NULL,10);}
 #ifndef HAVE_STRERROR
 const char * strerror(int err);
 #endif
-void init_my_timezone(void);
+#endif
+void init_my_timezone(void);//must be called before decode_(mdtm|textdate)
 
 int doopen(int &handle,const char * name,int access,int mode=0);
 int dofopen(FILE * &f,const char * name,const char * mode,int domiscquiet=0);
@@ -45,7 +54,10 @@ int dofopen(FILE * &f,const char * name,const char * mode,int domiscquiet=0);
 int dobackup(const char * name);
 
 int fexists(const char * f);
+#define FSEARCHPATH_ALLOWDIRS 1 //search for f in the paths even if it contains a slash
+const char *fsearchpath(const char * f,const char **paths,int flags);
 int testmkdir(const char * dir,int mode);
+char *goodgetcwd(char **p);
 
 const char * getfname(const char * src);
 
@@ -53,8 +65,25 @@ int do_utime(const char *f,time_t t);
 
 size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%m-%d-%y %H:%M", int local=1);
 
-
+//goodstrtok:
+//*cur should be set to string to tokenize on first call.
+//returns token, or NULL if finished.
+//thread safe.
 char * goodstrtok(char **cur, char sep);
+
+//whee!
+class strtoker {
+	protected:
+		char **toks;
+		int maxtoks;
+	public:
+		int numtoks;
+		char tokchar;
+		char * operator[](int i){return toks[i];}
+		int tok(char *str);
+		strtoker(int num,char tok);
+		~strtoker(){delete toks;}
+};
 
 int is_text(const char * f);
 

@@ -1,4 +1,4 @@
-.TH nget 1 "10 Jul 1999"
+.TH nget 1 "12 Apr 2000"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -12,10 +12,7 @@ contained within.  Multipart messages are automatically pieced together.
 .IP "-q/--quiet"
 Disable printing of merely informative messages.  Errors will still be printed.
 .IP "-h/--host host"
-Nntp host to use for subsequent commands.  In the simplest form, merely an ip
-or dns for the host.  Can also specify authenticication by using a form such as
-"hostname user pass".  See the AUTHENTICIATION section below for important
-notes on this.
+NNTP host to use for subsequent commands.  Must be configured in .ngetrc.
 .IP "-g/--group group"
 Newsgroup to use for subsequent commands.
 .IP "-G/--quickgroup group"
@@ -23,6 +20,16 @@ Like --group, but does not retrieve new headers.
 .IP "-r/--retrieve regex"
 Matches regex against subjects of previously selected group, and retrieves ones
 that match.
+.IP "-R/--expretrieve expression"
+Like -r, but matches expression instead of merely a regexp.  Expression is a
+postfix expression that can contain the keywords
+subject, author, lines, bytes, have, req, date, anum.  Note that the --limit
+argument does not affect the option, if you want to limit based on number
+of lines, add it as part of the expression.
+.IP "-@/--list LISTFILE"
+Specify a file to load a list of command line args from.  Looks in ~/.nget3/lists/ dir by default.
+.IP "-p/--path DIRECTORY"
+Path to store subsequent retrieves
 .IP "-T/--testmode"
 Causes --retrieve to merely print out all matching files.
 .IP "-t/--tries int"
@@ -30,33 +37,51 @@ Set maximum number of retries.  -1 will retry indefinatly (probably not a good
 idea).
 .IP "-l/--limit int"
 Set the minimum number of lines a message (or total number of lines for a
-multi-part message) must have to be considered for retrieval.  
+multi-part message) must have to be considered for retrieval.
+.IP "-s/--delay int"
+Set the number of seconds to wait between retry attempts.
 .IP "-i/--incomplete"
 Retrieve files with missing parts.
 .IP "-I/--complete"
 Retrieve only files with all parts.
+.IP "-k/--keep"
+Keep temp files.
+.IP "-K/--keep2"
+Keep temp files, and don't try to decode them.
 .IP "-c/--case"
 Match case sensitively.
 .IP "-C/--nocase"
 Match case insensitively.
-.IP "-d/--dupecheck"
+.IP "-d/--dupecheck FLAGS"
 Check to make sure you don't already have files.  This is done in two ways.
-The first is by compiling a list of all files in the current directory, then
+The first ("f") is by compiling a list of all files in the current directory, then
 checking against all messages to be retrieved to see if one of the filenames
 shows up in the subject.  This works reasonably well, though sometimes the
 filename isn't in the subject.  It can also cause problems if you happen to
 have files in the directory named silly things like "a", in which case all
 messages with the word "a" in them will be skipped.  However, it is still smart
 enough not to skip messages that merely have a word containing "a".  The second
-method is by setting a flag in the header cache that will prevent it from being
-retrieved again.
+method ("i") is by setting a flag in the header cache that will prevent it from being
+retrieved again.  You can use combos such as -dfi to check both, -dFi to only
+check the flag, -dfI to only check files, etc.
 .IP "-D/--nodupecheck"
 Don't check either of the --dupecheck methods, retrieve any messages that
 match.
+.IP "-S/--tempshortnames"
+Use 8.3 tempfile names (for old dos partitions, etc).
+.IP "-L/--templongnames"
+Use 17.3 tempfile names. 
+.IP "-P/--temppath DIRECTORY"
+Store temporary files in path instead of the current dir.
+.IP "-N/--noconnect"
+Do not connect to any server.  Useful for trying to decode as much as you have.
+(if you got stuff with -K or ngetlite.)
+.IP "-w/--writelite LITEFILE"
+Write a list of parts to retrieve with ngetlite.
 .IP "-?/--help"
 Show help.
 .SH CONFIGURATION
-Upon startup, nget will read ~/.nget/.ngetrc for default configuration values and host/group
+Upon startup, nget will read ~/.nget3/.ngetrc for default configuration values and host/group
 aliases.  An example .ngetrc should have been included with nget.
 .P
 Options are specified one per line in the form:
@@ -73,23 +98,100 @@ Subsections and specified in the form
 .br
 where data is any number of options.
 .P
-Options that can be specified are: 
+Global options that can be specified are: 
 .br
-Integral: limit, tries
+Integral: limit, tries, debug, delay
 .br
-Boolean(0/1): case, complete, dupecheck, quiet
+Boolean(0/1): case, complete, dupeidcheck, dupefilecheck, quiet, tempshortnames
 .P
-Aliases are defined in a subsection where section_name is either halias or
-galias, and data is any number of options where key is the alias and value is
-the expanded text.  In the host alias section, an alias with a key of "default"
-will override the default behaviour of using the $NNTPSERVER variable.
-.SH AUTHENTICATION
-Servers requiring authentication are accessable by specifying the host such as
--h "hostname user pass".  However, this will make your user and password
-visable to other users on the system, and is annoying to type.  So you should
-instead place a file called ".authinfo" within the cache directory
-(ex: ~/.nget/hostname/.authinfo), the first line being the username and the
-second being the password.
+Host configuration is done in the halias section, with a subsection for each
+host containing its address, unique id, and optionally user/pass/fullxover
+items.  The "id" field must be unique, and should not be changed after you have
+used it (since it could leave leftovers in your cache files, unless you delete
+them first).
+.br
+For example, the following host section defines a single host "host1", with
+nntp authentication for user "bob", password "something", and the fullxover
+option enabled. (fullxover retrieves all headers from the server, including
+gaps in the header list, while normally it only retrieves headers more recent
+than the latest.)
+.br
+.B {halias
+.br
+.B  {host1
+.br
+.B   addr=news.host1.com
+.br
+.B   id=3838
+.br
+.B   user=bob
+.br
+.B   pass=something
+.br
+.B   fullxover=1
+.br
+.B  }
+.br
+.B }
+.P
+Multiserver priorities are defined in the hpriority section.  Multiple priority
+groups can be made, and different newsgroups can be configured to use their own
+priority grouping, or they will default to the "default" group.  The hpriority
+section contains a subsection for each priority group, with data items of
+server=prio-multiplier, and the special item _level=float(_level is unused in
+nget 0.8, but reserved for future use).  The priority group
+"trustsizes" also has special meaning, and is used to choose which servers
+reporting of article line/byte counts to trust when reporting to the user.
+.br
+For example, the following section defines the default priority group and the
+trustsizes priority group.  If all hosts have a certain article, goodhost will
+be most likely to be chosen, and badhost least likely.
+.br
+.B {hpriority
+.br
+.B  {default
+.br
+.B   _level=1.01
+.br
+.B   host1=1.9
+.br
+.B   goodhost=2.0
+.br
+.B   badhost=0.9
+.br
+.B  }
+.br
+.B  {trustsizes
+.br
+.B   goodhost=5.0
+.br
+.B   badhost=0.1
+.br
+.B  }
+.br
+.B }
+.P
+Newsgroup aliases are defined in the galias section.  An alias can be a simple
+alias=fullname data item, or  a subsection containing group= and prio= items.
+.br
+For example, the following galias section defines an alias of "abpl" for the
+group "alt.binaries.pictures.linux", and "chocobo" for the group "alt.chocobo".
+In addition, the chocobo group is assigned to use the chocoprios priority
+grouping when deciding what server to retrieve from.
+.br
+.B {galias
+.br
+.B  abpl=alt.binaries.pictures.linux
+.br
+.B  {chocobo
+.br
+.B   group=alt.chocobo
+.br
+.B   prio=chocoprios
+.br
+.B  }
+.br
+.B }
 .SH EXAMPLES
 get listing of all files matching penguin*.png from alt.binaries.pictures.linux:
 .br
@@ -98,21 +200,34 @@ get listing of all files matching penguin*.png from alt.binaries.pictures.linux:
 retrieve all the ones that have more than 50 lines:
 .br
 .B nget -g alt.binaries.pictures.linux -l 50 -r "penguin.*png"
-
+.P
+equivilant to above, using -R:
+.br
+.B nget -g alt.binaries.pictures.linux -R "lines 50 > subject penguin.*png == &&"
+.br
+(basically (lines > 50) && (subject == penguin.*png))
 .SH ENVIRONMENT
 .PP
+.IP "HOME"
+Where to put .nget3 directory. (put nget files $HOME/.nget3/)
+.IP "NGETHOME"
+Override HOME var (put nget files in $NGETHOME)
 .IP "NNTPSERVER"
-Default host to use.
+Default host to use for -g command.  (Hold over from previous versions, since I haven't gotten
+the host priority stuff complete for -g operation.)  -r and other commands will
+use the server priority settings to select which server to try first.  -g will
+support this in the next version of nget.
 .SH FILES
 .PP
-.IP "~/.nget/"
-All configuration and cache files are stored here.
-.IP "~/.nget/.ngetrc"
-Configuration file.
-.IP "~/.nget/hostname/"
-Cache files are stored here.
-.IP "~/.nget/hostname/.authinfo"
-User/pass authentication information.  Be sure to set to owner readable only.
+.IP "~/.nget3/"
+All configuration and cache files are stored here.  Changed to .nget3/ because
+config/cache formats changed in nget 0.8. (nget3 directory name is for file
+format version 3, not nget version 3.)
+.IP "~/.nget3/.ngetrc"
+Configuration file.  If you store authentication information here, be sure to
+set in readable only by owner.
+.IP "~/.nget3/lists/"
+Default directory for listfiles.
 .SH BUGS
 There should be some quotes in those above examples, but I'm no man page guru.
 If someone wants to clean up this manpage and fix the little things like that,

@@ -1,6 +1,6 @@
 /*
     nget - command line nntp client
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,17 +18,22 @@
 */
 
 
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #include <signal.h>
 #include <unistd.h>
+#ifdef HAVE_LIBPOPT
+extern "C" {
+#include <popt.h>
+}
+#else
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
+#endif
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <errno.h>
 #include <string.h>
 #include <time.h>
@@ -38,23 +43,12 @@
 #include "log.h"
 #include "nget.h"
 #include "datfile.h"
+#include "myregex.h"
 
-//####these should prolly go in some other file....
-c_error::c_error(int n, const char * s, ...){
-	va_list ap;
-	num=n;
-	va_start(ap,s);
-	vasprintf(&str,s,ap);
-	va_end(ap);
-	//printf("c_error %i constructed\n",num);
-}
-c_error::~c_error(){
-	if (str) delete str;
-	//printf("c_error %i deconstructed\n",num);
-};
-int quiet=0,debug=0;
 time_t lasttime;
-#define NUM_OPTIONS 15
+
+#define NUM_OPTIONS 27
+#ifndef HAVE_LIBPOPT
 
 #ifndef HAVE_GETOPT_LONG
 struct option {
@@ -65,35 +59,37 @@ struct option {
 };
 #endif
 
-struct option long_options[NUM_OPTIONS+1];
-/*={
-	{"quiet",1,0,'q'},
-	{"host",1,0,'h'},
-	{"group",1,0,'g'},
-	{"quickgroup",1,0,'G'},
-	{"retrieve",1,0,'r'},
-	{"testretrieve",1,0,'R'},
-	{"tries",1,0,'t'},
-	{"limit",1,0,'l'},
-	{"help",0,0,'?'},
-	{0,0,0,0}
-};*/
+static struct option long_options[NUM_OPTIONS+1];
+#define OPTIONS "-qh:g:G:r:R:@:Tt:s:l:iIcCdD?"
+
+#else //!HAVE_LIBPOPT
+
+static struct poptOption optionsTable[NUM_OPTIONS+1];
+#endif //HAVE_LIBPOPT
+
 struct opt_help {
 	int namelen;
 	char *arg;
 	char *desc;
 };
-//char * opt_help[NUM_OPTIONS+1];
-//char * opt_ahelp[NUM_OPTIONS+1];
-opt_help ohelp[NUM_OPTIONS+1];
-int olongestlen=0;
+static opt_help ohelp[NUM_OPTIONS+1];
+static int olongestlen=0;
 
-void addoption(char *longo,int needarg,char shorto,char *adesc,char *desc){
+static void addoption(char *longo,int needarg,char shorto,char *adesc,char *desc){
 	static int cur=0;
+	assert(cur<NUM_OPTIONS);
+#ifdef HAVE_LIBPOPT
+	optionsTable[cur].longName=longo;
+	optionsTable[cur].shortName=shorto;
+	optionsTable[cur].argInfo=needarg?POPT_ARG_STRING:POPT_ARG_NONE;
+	optionsTable[cur].val=shorto;
+	optionsTable[cur].arg=NULL;
+#else //HAVE_LIBPOPT
 	long_options[cur].name=longo;
 	long_options[cur].has_arg=needarg;
 	long_options[cur].flag=0;
 	long_options[cur].val=shorto;
+#endif //!HAVE_LIBPOPT
 	ohelp[cur].namelen=longo?strlen(longo):0;
 	ohelp[cur].arg=adesc;
 	ohelp[cur].desc=desc;
@@ -102,9 +98,41 @@ void addoption(char *longo,int needarg,char shorto,char *adesc,char *desc){
 		olongestlen=l;
 	cur++;
 }
-void print_help(void){
-      printf("nget v0.7 - nntp command line fetcher\n");
-      printf("Copyright 1999 Matt Mueller <donut@azstarnet.com>\n");
+static void addoptions(void)
+{
+	addoption("quiet",0,'q',0,"supress extra info");
+	addoption("host",1,'h',"HOSTALIAS","nntp host to use (must be configured in .ngetrc)");
+	addoption("group",1,'g',"GROUPNAME","newsgroup");
+	addoption("quickgroup",1,'G',"GROUPNAME","use group without checking for new headers");
+	addoption("expretrieve",1,'R',"EXPRESSION","retrieve files matching expression(see man page)");
+	addoption("retrieve",1,'r',"REGEX","retrieve files matching regex");
+	addoption("list",1,'@',"LISTFILE","read commands from listfile");
+	addoption("path",1,'p',"DIRECTORY","path to store subsequent retrieves");
+//	addoption("mark",1,'m',"MARKNAME","name of high water mark to test files against");
+//	addoption("testretrieve",1,'R',"REGEX","test what would have been retrieved");
+	addoption("testmode",0,'T',0,"test what would have been retrieved");
+	addoption("tries",1,'t',"INT","set max retries (-1 unlimits, default 20)");
+	addoption("delay",1,'s',"INT","seconds to wait between retry attempts(default 1)");
+	addoption("limit",1,'l',"INT","min # of lines a 'file' must have(default 3)");
+	addoption("incomplete",0,'i',0,"retrieve files with missing parts");
+	addoption("complete",0,'I',0,"retrieve only files with all parts(default)");
+	addoption("keep",0,'k',0,"keep temp files");
+	addoption("keep2",0,'K',0,"keep temp files and don't even try to decode them");
+	addoption("case",0,'c',0,"match casesensitively");
+	addoption("nocase",0,'C',0,"match incasesensitively(default)");
+	addoption("dupecheck",1,'d',"FLAGS","check to make sure you haven't already downloaded files(default -dfi)");
+	addoption("nodupecheck",0,'D',0,"don't check if you already have files(shortcut for -dFI)");
+	addoption("tempshortnames",0,'S',0,"use 8.3 names for tempfiles");
+	addoption("templongnames",0,'L',0,"use long names for tempfiles");
+	addoption("temppath",1,'P',"DIRECTORY","path to store tempfiles");
+	addoption("writelite",1,'w',"LITEFILE","write out a ngetlite list file");
+	addoption("noconnect",0,'N',0,"don't connect, only try to decode what we have");
+	addoption("help",0,'?',0,"this help");
+	addoption(NULL,0,0,NULL,NULL);
+};
+static void print_help(void){
+      printf("nget v0.8 - nntp command line fetcher\n");
+      printf("Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
 it under the terms of the GNU General Public License as published by\n\
@@ -116,20 +144,56 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n\
 GNU General Public License for more details.\n\n\
 You should have received a copy of the GNU General Public License\n\
 along with this program; if not, write to the Free Software\n\
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.\n");	
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.\n");
 //      printf("\nUSAGE: nget [-q] [-h host] [-g group] [-r subject regex] ?\n\n"
 //	       "-q	quiet mode.  Use twice for total silence\n"
 //);
 	printf("\nUSAGE: nget -g group [-r file [-r file] [-g group [-r ...]]]\n");
-	  for (int i=0;long_options[i].name;i++){
-		  if (long_options[i].has_arg)
-			  printf("-%c  --%s=%-*s  %s\n",long_options[i].val,long_options[i].name,olongestlen-ohelp[i].namelen-1,ohelp[i].arg,ohelp[i].desc);
+  //this is kinda ugly, but older versions of popt don't have the poptPrintHelp stuff, and it seemed to print out a bit of garbage for me anyway...
+	  for (int i=0;
+#ifdef HAVE_LIBPOPT
+			  optionsTable[i].longName;
+#else
+			  long_options[i].name;
+#endif
+			  i++){
+			  printf("-%c  ",
+#ifdef HAVE_LIBPOPT
+					  optionsTable[i].shortName
+#else
+					  long_options[i].val
+#endif
+					  );
+		  if (
+#ifdef HAVE_LIBPOPT
+				  optionsTable[i].argInfo!=POPT_ARG_NONE
+#else
+				  long_options[i].has_arg
+#endif
+				  )
+			  printf("--%s=%-*s",
+#ifdef HAVE_LIBPOPT
+					  optionsTable[i].longName,
+#else
+					  long_options[i].name,
+#endif
+					  olongestlen-ohelp[i].namelen-1,ohelp[i].arg);
 		  else
-			  printf("-%c  --%-*s  %s\n",long_options[i].val,olongestlen,long_options[i].name,ohelp[i].desc);
+			  printf("--%-*s",
+					  olongestlen,
+#ifdef HAVE_LIBPOPT
+					  optionsTable[i].longName
+#else
+					  long_options[i].name
+#endif
+					  );
+			  printf("  %s\n",ohelp[i].desc);
 	  }
+#ifndef HAVE_LIBPOPT
 #ifndef HAVE_GETOPT_LONG
 	  printf("Note: long options not supported by this compile\n");
 #endif
+#endif //!HAVE_LIBPOPT
 	  //cache_dbginfo();
 //	  getchar();
 }
@@ -137,7 +201,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.\n");
 
 c_prot_nntp nntp;
 
-void term_handler(int s){
+static void term_handler(int s){
 	printf("\nterm_handler: signal %i, shutting down.\n",s);
 	nntp.cleanup();
 	exit(0);
@@ -145,224 +209,496 @@ void term_handler(int s){
 
 
 string nghome;
-c_data_file cfg;
-c_data_section *galias,*halias;
 
-int main(int argc,char ** argv){
-	int c=0,opt_idx;
-	const char * group=NULL;
-//	atexit(cache_dbginfo);
-	init_my_timezone();
-//	nntp.nntp_open(getenv("NNTPSERVER")?:"localhost",NULL,NULL);
-	addoption("quiet",0,'q',0,"supress extra info");
-	addoption("host",1,'h',"\"HOST [user pass]\"","nntp host (default $NNTPSERVER) [optional authinfo]");
-	addoption("group",1,'g',"GROUPNAME","newsgroup");
-	addoption("quickgroup",1,'G',"GROUPNAME","use group without checking for new headers");
-	addoption("retrieve",1,'r',"REGEX","retrieve files matching regex");
-//	addoption("mark",1,'m',"MARKNAME","name of high water mark to test files against");
-//	addoption("testretrieve",1,'R',"REGEX","test what would have been retrieved");
-	addoption("testmode",0,'T',0,"test what would have been retrieved");
-	addoption("tries",1,'t',"INT","set max retries (-1 unlimits, default 20)");
-	addoption("limit",1,'l',"INT","min # of lines a 'file' must have(default 3)");
-	addoption("incomplete",0,'i',0,"retrieve files with missing parts");
-	addoption("complete",0,'I',0,"retrieve only files with all parts(default)");
-	addoption("case",0,'c',0,"match casesensitively");
-	addoption("nocase",0,'C',0,"match incasesensitively(default)");
-	addoption("dupecheck",0,'d',0,"check to make sure you don't already have files(default)");
-	addoption("nodupecheck",0,'D',0,"don't check");
-	addoption("help",0,'?',0,"this help");
-	addoption(NULL,0,0,0,NULL);
-	signal(SIGTERM,term_handler);
-	signal(SIGHUP,term_handler);
-	signal(SIGINT,term_handler);
-	signal(SIGQUIT,term_handler);
-	nghome=getenv("HOME");
-	nghome.append("/.nget/");
+//c_server_list servers;
+//c_group_info_list groups;
+//c_server_priority_grouping_list priogroups;
 
-	cfg.setfilename((nghome + ".ngetrc").c_str());
-	cfg.read();
-	galias=cfg.data.getsection("galias");
-	halias=cfg.data.getsection("halias");
-	
-	
-	time(&lasttime);
-	srand(lasttime);
-	if (argc<2){
-		print_help();
+c_nget_config nconfig;
+
+struct nget_options {
+	int maxretry,retrydelay;
+	ulong linelimit;
+	int gflags,testmode,badskip,qstatus;
+	c_group_info::ptr group;//,*host;
+//	c_data_section *host;
+	c_server *host;
+//	char *user,*pass;//,*path;
+	string path;
+	string temppath;
+	string writelite;
+	//nget_options(void){path=NULL;}
+	nget_options(void){}
+	nget_options(nget_options &o):maxretry(o.maxretry),retrydelay(o.retrydelay),linelimit(o.linelimit),gflags(o.gflags),testmode(o.testmode),badskip(o.badskip),qstatus(o.qstatus),group(o.group),host(o.host)/*,user(o.user),pass(o.pass)*/,path(o.path),temppath(o.temppath),writelite(o.writelite){
+/*		if (o.path){
+			path=new char[strlen(o.path)+1];
+			strcpy(path,o.path);
+		}else
+			path=NULL;*/
+		//printf("copy path=%s(%p-%p)\n",path,this,path);
 	}
-	else {
-		int redo=0,redone=0,maxretry=20,badskip=0,linelimit=3,gflags=0,testmode=0,qstatus=0;
-		{
-			const char *s;
-			int t;
-			if (!halias || !(s=halias->getitema("default")))
-				s=getenv("NNTPSERVER")?:"";
-			nntp.nntp_open(s,NULL,NULL);
-			cfg.data.getitemi("debug",&debug);
-			cfg.data.getitemi("quiet",&quiet);
-			cfg.data.getitemi("limit",&linelimit);
-			cfg.data.getitemi("tries",&maxretry);
-			if (!cfg.data.getitemi("case",&t) && t==1)
-				gflags|= GETFILES_CASESENSITIVE;
-			if (!cfg.data.getitemi("complete",&t) && t==0)
-				gflags|= GETFILES_GETINCOMPLETE;
-			if (!cfg.data.getitemi("dupecheck",&t) && t==0)
-				gflags|= GETFILES_NODUPECHECK;
-		}
-		//printf("limit:%i tries:%i case:%i complete:%i dupcheck:%i\n",linelimit,maxretry,gflags&GETFILES_CASESENSITIVE,!(gflags&GETFILES_GETINCOMPLETE),!(gflags&GETFILES_NODUPECHECK));
-		while (1){
-			if (redo){
-				redo=0;
-			}else {
-				if ((c=
-#ifdef HAVE_GETOPT_LONG
-							getopt_long(argc,argv,"-qh:g:G:r:Tt:l:iIcCdD?",long_options,&opt_idx)
-#else
-							getopt(argc,argv,"-qh:g:G:r:Tt:l:iIcCdD?")
-#endif
-							)<0)
-					c=-12345;
-//					break;
-				redone=0;
+//	void del_path(void){if (path){/*printf("deleteing %s(%p-%p)\n",path,this,path);*/free(path);path=NULL;}}
+	//void get_path(void){/*printf("get_path\n");*/del_path();goodgetcwd(&path);}
+	void do_get_path(string &s){char *p;goodgetcwd(&p);s=p;free(p);}
+	void get_path(void){do_get_path(path);}
+	void get_temppath(void){
+		do_get_path(temppath);
+		if (temppath[temppath.size()-1]!='/')
+			temppath.append("/");
+	}
+	void parse_dupe_flags(const char *opt){
+		while(*opt){
+			switch (*opt){
+				case 'i':gflags&= ~GETFILES_NODUPEIDCHECK;break;
+				case 'I':gflags|= GETFILES_NODUPEIDCHECK;break;
+				case 'f':gflags&= ~GETFILES_NODUPEFILECHECK;break;
+				case 'F':gflags|= GETFILES_NODUPEFILECHECK;break;
+				default:
+						 throw new c_error(EX_U_FATAL,"unknown dupe flag %c",*opt);
 			}
-			try {
-				switch (c){
-					//					case 'R':
-					//						if(!group)
-					//							perror("no group specified\n");
-					//						nntp.nntp_queueretrieve(optarg,linelimit,0,gflags);
-					//						break;
-					case 'T':
-						testmode=1;
-						printf("testmode now %i\n",testmode);
-						break;
-					case 1:
-					case 'r':
-						if (!badskip){
-							if(!group)
-								printf("no group specified\n");
-							else{
-								nntp.nntp_queueretrieve(optarg,linelimit,gflags);
-								qstatus=1;
+			opt++;
+		}
+	}
+//	~nget_options(){del_path();}
+};
+struct s_arglist {
+	int argc;
+	char **argv;
+};
+static int do_args(int argc,char **argv,nget_options options,int sub){
+	int c=0;
+#ifdef HAVE_LIBPOPT
+	poptContext optCon;
+#else
+	int opt_idx;
+#endif
+	int redo=0,redone=0;
+	char * loptarg=NULL;
+	//printf("limit:%i tries:%i case:%i complete:%i dupcheck:%i\n",linelimit,maxretry,gflags&GETFILES_CASESENSITIVE,!(gflags&GETFILES_GETINCOMPLETE),!(gflags&GETFILES_NODUPECHECK));
+
+#ifdef HAVE_LIBPOPT
+	optCon = poptGetContext(NULL, argc, argv, optionsTable, sub?POPT_CONTEXT_KEEP_FIRST:0);
+#endif
+	while (1){
+		if (redo){
+			redo=0;
+		}else {
+			if ((c=
+#ifdef HAVE_LIBPOPT
+						poptGetNextOpt(optCon)
+#else //HAVE_LIBPOPT
+#ifdef HAVE_GETOPT_LONG
+						getopt_long(argc,argv,OPTIONS,long_options,&opt_idx)
+#else
+						getopt(argc,argv,OPTIONS)
+#endif
+#endif //!HAVE_LIBPOPT
+				)<0)
+				c=-12345;
+#ifdef HAVE_LIBPOPT
+			loptarg=poptGetOptArg(optCon);
+#else
+			loptarg=optarg;
+#endif //HAVE_LIBPOPT
+			//					break;
+			redone=0;
+		}
+//		printf("arg:%c(%i)=%s(%p)\n",isprint(c)?c:'.',c,loptarg,loptarg);
+		try {
+			switch (c){
+				//					case 'R':
+				//						if(!group)
+				//							perror("no group specified\n");
+				//						nntp.nntp_queueretrieve(loptarg,linelimit,0,gflags);
+				//						break;
+				case 'T':
+					options.testmode=1;
+					printf("testmode now %i\n",options.testmode);
+					break;
+				//case 1:
+				case 'R':
+					if (!options.badskip){
+						if(options.group.isnull())
+							printf("no group specified\n");
+						else{
+							generic_pred *p=make_pred(loptarg);
+							if (p){
+								nntp.filec=nntp.gcache->getfiles(nntp.filec,nntp.midinfo,p,options.gflags);
+								delete p;
+								options.qstatus=1;
 							}
 						}
-						break;
-					case 'i':
-						gflags|= GETFILES_GETINCOMPLETE;
-						break;
-					case 'I':
-						gflags&= ~GETFILES_GETINCOMPLETE;
-						break;
-					case 'c':
-						gflags|= GETFILES_CASESENSITIVE;
-						break;
-					case 'C':
-						gflags&= ~GETFILES_CASESENSITIVE;
-						break;
-					case 'd':
-						gflags&= ~GETFILES_NODUPECHECK;
-						break;
-					case 'D':
-						gflags|= GETFILES_NODUPECHECK;
-						break;
-					case 'q':
-						quiet++;
-						break;
-					case 't':
-						maxretry=atoi(optarg);
-						if (maxretry==-1)
-							maxretry=INT_MAX-1;
-						printf("max retries set to %i\n",maxretry);
-						break;
-					case 'l':
-						linelimit=atoi(optarg);
-						if (linelimit<0)
-							linelimit=0;
-						printf("minimum line limit set to %i\n",linelimit);
-						break;
-					case ':':
-					case '?':
-						print_help();
-						return 1;
-					default:
-						if (qstatus){
-							if (!badskip) nntp.nntp_retrieve(!testmode);
-							qstatus=0;
-						}
-						switch (c){	
-							case 'g':
-								if (badskip<2){
-									if (!galias || !(group=galias->getitema(optarg)))
-										group=optarg;
-									nntp.nntp_group(group,1);
-									if (badskip)
-										badskip=0;
-								}
-								break;
-							case 'G':
-								if (!galias || !(group=galias->getitema(optarg)))
-									group=optarg;
-								nntp.nntp_group(group,0);
-								break;
-							case 'h':{
-										 char *u=optarg,*p=NULL;
-										 const char *h;
-										 goodstrtok(&u,' ');
-										 if (u){
-											 p=u;
-											 goodstrtok(&p,' ');
-										 }
-										 badskip=0;
-										 if (!halias || !(h=halias->getitema(optarg)))
-											 h=optarg;
-										 nntp.nntp_open(h,u,p);
-									 }
-									 break;
-							case -12345:
-//								if (!badskip){
-//									nntp.nntp_retrieve(!testmode);
-//								}
-								return 0;
-							default:
-								print_help();
-								return 1;
-						}
-				}
-			}catch(c_error *e){
-				int n=e->num;
-				printf("caught exception %i: %s",n,e->str);
-				delete e;
-				if (n<EX_FATALS){
-					if(redone<maxretry){
-						redo=1;redone++;
-						printf(" (trying again. %i)\n",redone);
-					}else{
-						redo=0;redone=0;
 					}
-				}else{
-					if (n==EX_A_FATAL){
-						printf(" (fatal application error, exiting..)\n");
-						return -1;
+					break;
+				case 'r':
+					if (!options.badskip){
+						if(options.group.isnull())
+							printf("no group specified\n");
+						else{
+							/*c_regex_nosub *reg=new c_regex_nosub(loptarg,REG_EXTENDED + ((gflags&GETFILES_CASESENSITIVE)?0:REG_ICASE));
+							  if (!reg)
+							  throw new c_error(EX_A_FATAL,"couldn't allocate regex");
+							  if (reg->geterror()){
+							  char buf[256];
+							  int e=reg->geterror();
+							  reg->strerror(buf,256);
+							  delete reg;
+							//throw new c_error(EX_A_FATAL,"regex error %i:%s",e,buf);
+							printf("regex error %i:%s\n",e,buf);break;
+							}
+							nntp_pred *p=ecompose2(new e_land<bool>,
+							new e_binder2nd<e_nntp_file_lines<e_ge<ulong> > >(linelimit),
+							new e_binder2nd_p<e_nntp_file_subject<e_eq<string,c_regex_nosub*> > >(reg));
+
+							nntp.filec=nntp.gcache->getfiles(nntp.filec,nntp.grange,p,gflags);
+							delete p;
+							if (!nntp.filec)
+							printf("nntp_retrieve: no match for %s\n",loptarg);
+							//									throw new c_error(EX_U_WARN,"nntp_retrieve: no match for %s",match);
+							//								nntp.nntp_queueretrieve(loptarg,linelimit,gflags);
+							qstatus=1;*/
+							char *s;
+							asprintf(&s,"lines %lu >= subject \"%s\" =~ &&",options.linelimit,loptarg);
+							generic_pred *p=make_pred(s);
+							free(s);
+							if (p){
+								nntp.filec=nntp.gcache->getfiles(nntp.filec,nntp.midinfo,p,options.gflags);
+								delete p;
+								options.qstatus=1;
+							}
+						}
+					}
+					break;
+				case 'i':
+					options.gflags|= GETFILES_GETINCOMPLETE;
+					break;
+				case 'I':
+					options.gflags&= ~GETFILES_GETINCOMPLETE;
+					break;
+				case 'k':
+					options.gflags|= GETFILES_KEEPTEMP;
+					break;
+				case 'K':
+					options.gflags|= GETFILES_NODECODE;
+					break;
+				case 'c':
+					options.gflags|= GETFILES_CASESENSITIVE;
+					break;
+				case 'C':
+					options.gflags&= ~GETFILES_CASESENSITIVE;
+					break;
+				case 'd':
+					options.parse_dupe_flags(loptarg);
+					break;
+				case 'D':
+					options.gflags|= GETFILES_NODUPEFILECHECK | GETFILES_NODUPEIDCHECK;
+					break;
+				case 'S':
+					options.gflags|= GETFILES_TEMPSHORTNAMES;
+					break;
+				case 'L':
+					options.gflags&= ~GETFILES_TEMPSHORTNAMES;
+					break;
+				case 'N':
+					options.gflags|= GETFILES_NOCONNECT;
+					break;
+				case 'q':
+					quiet++;
+					break;
+				case 's':
+					options.retrydelay=atoi(loptarg);
+					if (options.retrydelay<0)
+						options.retrydelay=1;
+					printf("retry delay set to %i\n",options.retrydelay);
+					break;
+				case 't':
+					options.maxretry=atoi(loptarg);
+					if (options.maxretry==-1)
+						options.maxretry=INT_MAX-1;
+					printf("max retries set to %i\n",options.maxretry);
+					break;
+				case 'l':
+					options.linelimit=atoi(loptarg);
+					if (options.linelimit<0)
+						options.linelimit=0;
+					printf("minimum line limit set to %lu\n",options.linelimit);
+					break;
+				case 'w':
+					options.writelite=loptarg;
+					printf("writelite to %s\n",options.writelite.c_str());
+					break;
+				case 'P':
+					if (!chdir(loptarg)){
+						options.get_temppath();
+						chdir(options.path.c_str());
+						printf("temppath:%s\n",options.temppath.c_str());
 					}else{
-						printf(" (fatal, aborting..)\n");
-						if (n==EX_T_FATAL)
-							badskip=2;
-						//else if (n==EX_U_FATAL)
-						else
-							badskip=1;
-					}	
+						printf("could not change temppath to %s\n",loptarg);
+						return -1;
+					}
+					break;
+				case 'p':
+					if (!chdir(loptarg)){
+						options.get_path();
+						printf("path:%s\n",options.path.c_str());
+					}else{
+						printf("could not change to %s\n",loptarg);
+						return -1;
+					}
+					break;
+				case ':':
+				case '?':
+					print_help();
+					return 1;
+				default:
+					if (options.qstatus){
+						if (!options.badskip) nntp.nntp_retrieve(!options.testmode,options.gflags,options.temppath,options.writelite);
+						options.qstatus=0;
+					}
+					switch (c){
+						case '@':
+#ifdef HAVE_LIBPOPT
+							{
+								const char *paths[2]={(nghome + "lists/").c_str(),NULL};
+								const char *filename=fsearchpath(loptarg,paths,FSEARCHPATH_ALLOWDIRS);
+								c_file_fd f;
+								f.initrbuf(2048);
+								if (filename && !f.open(filename,O_RDONLY)){
+									int totargc=0;
+									int pr;
+									s_arglist larg;
+									list<s_arglist> arglist;
+									while (f.bgets()>0){
+										if(!(pr=poptParseArgvString(f.rbufp(),&larg.argc,&larg.argv))){
+											arglist.push_back(larg);
+											totargc+=larg.argc;
+										}else printf("poptParseArgvString:%i\n",pr);
+									}
+									f.close();
+									if (!arglist.empty()){
+										int tc=0,ic=0;
+										s_arglist targ;
+										larg.argc=totargc;
+										larg.argv=(char**)malloc((totargc+1)*sizeof(char**));
+										list<s_arglist>::iterator it=arglist.begin();
+										for (;it!=arglist.end();++it){
+											targ=*it;
+											for(ic=0;ic<targ.argc;ic++,tc++)
+												larg.argv[tc]=targ.argv[ic];
+										}
+
+										do_args(larg.argc,larg.argv,options,1);
+										if (options.host){//####here we reset the stuff that may have been screwed in our recursiveness.  Perhaps it should reset it before returning, or something.. but I guess this'll do for now, since its the only place its called recursively.
+											nntp.nntp_open(options.host);
+											if (!options.group.isnull())
+												nntp.nntp_group(options.group,0);
+										}
+										if (!chdir(options.path.c_str())){
+											printf("path:%s\n",options.path.c_str());
+										}else{
+											printf("could not change to %s\n",options.path.c_str());
+											return -1;
+										}
+										for (it=arglist.begin();it!=arglist.end();++it)
+											free((*it).argv);
+										free(larg.argv);
+									}
+								}else{
+									printf("error opening %s: %s(%i)\n",filename?:loptarg,strerror(errno),errno);errno=0;
+								}
+								if (filename && filename!=loptarg)
+									free(const_cast<char*>(filename));//const_cast away the warning
+							}
+#else
+							printf("This option is only available when libpopt is used.\n");
+#endif
+							break;
+						case 'g':
+							if (options.badskip<2){
+								if (options.host==NULL){
+									printf("null host, trying %s\n",getenv("NNTPSERVER"));
+									if (getenv("NNTPSERVER")){
+										options.host=nconfig.getserver(getenv("NNTPSERVER"));//###### TODO: KLUDGE since host prio stuff isn't finished.
+										nntp.nntp_open(options.host);
+									}
+								}
+								options.group=nconfig.getgroup(loptarg);
+//								if (!galias || !(options.group=galias->getitema(loptarg)))
+//									options.group=loptarg;
+								nntp.nntp_group(options.group,1);
+								if (options.badskip)
+									options.badskip=0;
+							}
+							break;
+						case 'G':
+							if (options.badskip<2){
+								options.group=nconfig.getgroup(loptarg);
+//								if (!galias || !(options.group=galias->getitema(loptarg)))
+//									options.group=loptarg;
+								nntp.nntp_group(options.group,0);
+								if (options.badskip)
+									options.badskip=0;
+							}
+							break;
+						case 'h':{
+									 /*options.user=loptarg,options.pass=NULL;
+									 goodstrtok(&options.user,' ');
+									 if (options.user){
+										 options.pass=options.user;
+										 goodstrtok(&options.pass,' ');
+									 }
+									 options.badskip=0;
+									 if (!halias || !(options.host=halias->getitema(loptarg)))
+										 options.host=loptarg;
+									 nntp.nntp_open(options.host,options.user,options.pass);*/
+									 options.host=nconfig.getserver(loptarg);
+//									 options.host=halias->getsection(loptarg);
+									 nntp.nntp_open(options.host);
+								 }
+								 break;
+						case -12345:
+								 //								if (!badskip){
+								 //									nntp.nntp_retrieve(!testmode);
+								 //								}
+								 return 0;
+						default:
+								 print_help();
+								 return 1;
+					}
+			}
+		}catch(c_error *e){
+			int n=e->num;
+			printf("caught exception %i: %s",n,e->str);
+			delete e;
+			if (n<EX_FATALS){
+				if(redone<options.maxretry){
+					redo=1;redone++;
+					printf(" (trying again. %i)\n",redone);
+					if (options.retrydelay)
+						sleep(options.retrydelay);
+				}else{
+					printf("\n");
+					redo=0;redone=0;
+				}
+			}else{
+				if (n==EX_A_FATAL){
+					printf(" (fatal application error, exiting..)\n");
+					exit(-1);
+				}else{
+					printf(" (fatal, aborting..)\n");
+					if (n==EX_T_FATAL)
+						options.badskip=2;
+					//else if (n==EX_U_FATAL)
+					else
+						options.badskip=1;
 				}
 			}
 		}
-			//		printf("quiet=%i host=%s\n",quiet,nntp_server);
-			//		for (int i=optind;i<argc;i++)
-			//			switch (mode){
-			//				default:
-			//					printf("%s\n",argv[i]);
-			//					nntp_get(nntp_server,group,argv[i]);
-			//			}
-
 	}
+	//		printf("quiet=%i host=%s\n",quiet,nntp_server);
+	//		for (int i=optind;i<argc;i++)
+	//			switch (mode){
+	//				default:
+	//					printf("%s\n",argv[i]);
+	//					nntp_get(nntp_server,group,argv[i]);
+	//			}
+
+#ifdef HAVE_LIBPOPT
+	poptFreeContext(optCon);
+#endif
+}
+int main(int argc,char ** argv){
+	try {
+		//	atexit(cache_dbginfo);
+		//string hi="aoeu";
+		//	char *aoeu=new char[5];
+		init_my_timezone();
+		//	nntp.nntp_open(getenv("NNTPSERVER")?:"localhost",NULL,NULL);
+		addoptions();
+		signal(SIGTERM,term_handler);
+		signal(SIGHUP,term_handler);
+		signal(SIGINT,term_handler);
+		signal(SIGQUIT,term_handler);
+		{
+			char *home;
+			home=getenv("NGETHOME");
+			if (home)
+				nghome=home;
+			else {
+				home=getenv("HOME");
+				if (!home){
+					printf("HOME environment var not set.");
+					exit(1);
+				}
+				nghome=home;
+				nghome.append("/.nget3/");
+			}
+		}
+
+
+		time(&lasttime);
+		srand(lasttime);
+		if (argc<2){
+			print_help();
+		}
+		else {
+			nget_options options;
+			options.maxretry=20;
+			options.retrydelay=1;
+			options.badskip=0;
+			options.linelimit=3;
+			options.gflags=0;
+			options.testmode=0;
+			options.qstatus=0;
+			options.group=NULL;
+			options.host=NULL;
+			//		options.user=NULL;
+			//		options.pass=NULL;
+			{
+				c_data_file cfg;
+				c_data_section *galias,*halias,*hpriority;
+				cfg.setfilename((nghome + ".ngetrc").c_str());
+				cfg.read();
+				halias=cfg.data.getsection("halias");
+				hpriority=cfg.data.getsection("hpriority");
+				galias=cfg.data.getsection("galias");
+				if (!halias) {
+					fprintf (stderr,"no halias section (or no ngetrc at all), please configure first. (see man nget)\n");
+					return 1;
+				}
+				nconfig.setlist(halias,hpriority,galias);
+				int t;
+				/*			if (!halias || !(options.host=halias->getitema("default")))
+							options.host=getenv("NNTPSERVER")?:"";
+							nntp.nntp_open(options.host,NULL,NULL);*/
+				/*			options.host=halias->getsection("default");
+							nntp.nntp_open(options.host);*/
+				cfg.data.getitemi("debug",&debug);
+				cfg.data.getitemi("quiet",&quiet);
+				cfg.data.getitemul("limit",&options.linelimit);
+				cfg.data.getitemi("tries",&options.maxretry);
+				cfg.data.getitemi("delay",&options.retrydelay);
+				if (!cfg.data.getitemi("case",&t) && t==1)
+					options.gflags|= GETFILES_CASESENSITIVE;
+				if (!cfg.data.getitemi("complete",&t) && t==0)
+					options.gflags|= GETFILES_GETINCOMPLETE;
+				if (!cfg.data.getitemi("dupeidcheck",&t) && t==0)
+					options.gflags|= GETFILES_NODUPEIDCHECK;
+				if (!cfg.data.getitemi("dupefilecheck",&t) && t==0)
+					options.gflags|= GETFILES_NODUPEFILECHECK;
+				if (!cfg.data.getitemi("tempshortnames",&t) && t==1)
+					options.gflags|= GETFILES_TEMPSHORTNAMES;
+			}
+			options.get_path();
+			nntp.initready();
+			do_args(argc,argv,options,0);
+		}
+	}catch(c_error *e){
+		int n=e->num;
+		printf("main(): caught exception %i: %s",n,e->str);
+		delete e;
+	}
+
 	return 0;
 }
 

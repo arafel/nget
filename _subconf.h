@@ -1,5 +1,7 @@
 /* get rid of stupid undefined errors for (v)asprintf */
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #ifndef HAVE_SLIST_H
 #define slist list
@@ -11,6 +13,8 @@
 #ifndef HAVE_LIBZ
 #undef CHECKSUM
 #endif
+
+#include <assert.h>
 
 /*#ifdef CHECKSUM
 #define CACHE_USE_CHECKSUM

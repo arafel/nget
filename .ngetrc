@@ -1,28 +1,65 @@
-//example .ngetrc, copy to your ~/.nget/ dir, and edit to your liking.
+//example .ngetrc, copy to your ~/.nget3/ dir, and edit to your liking.
 
-//default settings
+//global settings - (defaults, merely listed for your convenience)
 tries=20
+delay=1
 case=0
 complete=1
-dupecheck=1
+dupeidcheck=1
+dupefilecheck=1
 limit=3
 quiet=0
+debug=0
+tempshortnames=0
 
 //hostname aliases
-//Note that a host alias of "default" is special, and will be used instead of
-//$NNTPSERVER if no host is supplied on the command line.
-//Also note that aliases cannot (currently) be recursive.  If anyone really
-//happens to want this (and can give me a good reason) I'll add it.
 {halias
- default=news.server2.com
- 1=news.server1.com
- foo=nntp.bar.org
+ {host1
+  addr=news.host1.com
+  fullxover=1
+  id=1
+ }
+ {goodhost
+  addr=nntp.goodhost.net
+  user=yourname
+  pass=hahahahah
+  id=2
+ }
+ {badhost
+  addr=hah.bad.host.org
+  id=384847
+ }
+}
+
+//multi-server priorities
+{hpriority
+ {default
+  host1=1.9
+  goodhost=2.0
+  badhost=0.9
+ }
+ {trustsizes
+  goodhost=5.0
+  badhost=0.1
+ }
+ {chocoboprios
+  host1=1.8
+  badhost=1.2
+  goodhost=0.9
+ }
 }
 
 //newsgroup aliases
 {galias
- ac=alt.chocobo
- chocobo=alt.chocobo
- acwww=alt.chocobo.wark.wark.wark
- wark=alt.chocobo.wark.wark.wark
+ ayg=alt.your.group
+ mygroup=rec.my.group
+ {chocobo
+  group=alt.chocobo
+  prio=chocoboprios
+ }
+ {wark
+  group=alt.chocobo.wark.wark.wark
+  prio=chocoboprios
+ }
 }
+
