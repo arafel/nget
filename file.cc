@@ -61,6 +61,7 @@ c_file::c_file(void){
 
 c_file::~c_file(){
 //	close();//cant call it here, since doclose is already gone
+	delete rbuffer;
 }
 
 ssize_t c_file::putf(const char *data,...){

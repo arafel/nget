@@ -79,6 +79,7 @@ class c_data_item
 			if (compareval(it) && key==it.key)return 1;
 			return 0;
 		}*/
+		virtual ~c_data_item(){}
 };
 
 #ifdef HAVE_HASH_MAP_H
