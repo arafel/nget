@@ -7,6 +7,7 @@ nget (0.??) unstable; urgency=low
   * -T now prints date in ISO8601 format, rather than seconds since the epoch. 
   * -p and -P can now be specified multiple times without requiring a -G between each. (eg. now you can -G somegroup -p /dir1 -r somefiles -p /dir2 -r someotherstuff)
   * Remove quotes from quoted filenames.
+  * Added FAQ.
 
  -- ??
 

@@ -1,0 +1,43 @@
+nget Frequently Asked Questions
+
+Index:
+
+1. Why doesn't -G somegroup -r '*.png' work?
+2. Whats a regexp? I'm too lazy to read a man page.
+3. Whats this "unequal line count" error?
+
+
+Answers:
+
+1. Why doesn't nget -G somegroup -r '*.png' work?
+
+nget uses regular expressions, not glob style matching.  So what you
+really meant was -r '.*\.png' (or really -r '\.png', since regexps aren't 
+"anchored" by default.)  For regexp info see grep(1) or regex(7) or if you
+are using --with-pcre, see perlre(1).
+
+
+2. Whats a regexp? I'm too lazy to read the man pages.
+
+Simple description: take your glob expression, replace:
+. with \.
+? with .
+* with .*
+
+See the manpages for more complicated stuff ;)
+
+
+3. Whats this "unequal line count" error?
+
+If its always the same difference, its likely that your news server
+just counts the lines differently.  You can use the linelenience option
+to accept this, the man page has more info but you can add a line like:
+linelenience=0,1
+to the server section of your .ngetrc (Assuming the server returns 1
+above normal)
+
+The main reason this check is in there is to catch any possible download
+corruption, but in a case like this its just the server and nget
+disagree on the method of counting.  pan most likely just doesn't care
+if the line count is different.
+
