@@ -1,5 +1,4 @@
-nget (0.??) unstable; urgency=low
-
+2001-08-01 - v0.14:
   * Fix exception if files in current dir contained '{' or '}'. (reported by Brian Keefer)
   * Remove autoconf AC_C_CONST, its only for C progs and breaks g++.
   * Fixed east/west of GMT timezone discrepancy if timezone var not found by configure.
@@ -13,10 +12,7 @@ nget (0.??) unstable; urgency=low
   * Added -d [mM] flags. (Andres Heinloo)
   * Added -[MU] options. (Andres Heinloo, me)
 
- -- ??
-
-nget (0.13.2) unstable; urgency=low
-
+2001-02-08 - v0.13.2:
   * Add trailing / onto NGETHOME var so you don't need to.
   * Fix compile on Redhat 7.0.  (#defined PROTOTYPES before including uudeview)
   * Added usegz .ngetrc option. (global and per-group)
@@ -24,29 +20,20 @@ nget (0.13.2) unstable; urgency=low
   * ngetlite uses ngetlite.<pid> (instead of .tmp), allowing multiple ngetlite processes to run in the same dir.
   * ngetlite checks for bytes +-3 like nget.
   * fix signed/unsigned error in cache.cc that caused "no host selected" errors if using a serverid larger than would fit in a signed int.
-
- -- Matt Mueller <donut@azstarnet.com>  Thu,  8 Feb 2001 04:24:08 -0700
  
-nget (0.13.1) unstable; urgency=low
-
+2001-01-08 - v0.13.1:
   * Use write to tempfile then rename for saving cache and midinfo.
   * Made some forgotten printfs ("was gonna add...") into PDEBUGs.
   * Use $(MAKE) instead of make for making subdirs. (Howard Jones)
 
- -- Matt Mueller <donut@azstarnet.com>  Mon,  8 Jan 2001 16:36:31 -0700
-
-nget (0.13) unstable; urgency=low
-
+2000-09-05 - v0.13:
   * Locks midinfo files better.  Previous versions would not have corruption,
     but would lose one of the updates, if two nget instances tried to
     update the midinfo file at the same time.
   * Added -m option to optionally make directories that do not exist for
     -p and -P.
-
- -- Matt Mueller <donut@azstarnet.com>  Tue,  5 Sep 2000 21:41:16 -0700
   
-nget (0.12) unstable; urgency=low
-
+2000-08-18 - v0.12:
   * Fixed segfault on invalid param to -F
   * Deletes tempfile on drive full error.  (Otherwise the useless
     truncated file may cause annoyances later)
@@ -67,20 +54,14 @@ nget (0.12) unstable; urgency=low
   * Changed -q behavior, a single -q will merely disable the auto-updating
     output, to make redirecting the output (eg, logging) acceptable.
     Specifying -q twice will use the old behavior of being very quiet.
-
- -- Matt Mueller <donut@azstarnet.com>  Wed, 18 Aug 2000 21:47:34 -0700
   
-nget (0.11) unstable; urgency=low
-
+2000-08-09 - v0.11:
   * Fixed segfault on reconnecting after exception in ngetlite.
   * Added -F command to flush headers from a group.
   * Fixed const char ** compilation problem in nget.cc (Only showed up with
     newer versions of popt)
 
- -- Matt Mueller <donut@azstarnet.com>  Wed,  9 Aug 2000 06:33:25 -0700
-
-nget (0.10) unstable; urgency=low
-
+2000-04-18 - v0.10:
   * Fixed handling of invalid args when using libpopt.
   * Added _level and _glevel prio options, and made -g select hosts
     automatically.
@@ -92,10 +73,7 @@ nget (0.10) unstable; urgency=low
   * Better error handling for badly configured sections in .ngetrc.
   * Fixed nrange.cc compile problem in without-zlib build.
 
- -- Matt Mueller <donut@azstarnet.com>  Tue, 18 Apr 2000 15:55:53 -0700
-
-nget (0.9) unstable; urgency=low
-
+2000-04-13 - v0.9:
   * fixed command line arg problems when built with getopt rather that libpopt.
   * fixed creating _midinfo files with no permissions problem (caused error
     after trying to use the group for the second time on some systems).
@@ -106,10 +84,7 @@ nget (0.9) unstable; urgency=low
   * added curservmult config option (was hardcoded to 2.0 in v0.8)
   * fixed a few documentation ommisions
 
- -- Matt Mueller <donut@azstarnet.com>  Thu, 13 Apr 2000 22:49:22 -0700
-
-nget (0.8) unstable; urgency=low
-
+2000-04-12 - v0.8:
   * nget version 0.8 released on 2000-04-12. (sorry about that wait.)
   * fullxover server option to try to fill in gaps in header lists, for servers
     that don't always add headers in order.
@@ -148,10 +123,7 @@ nget (0.8) unstable; urgency=low
   * Fixed a bug that would occasionally split parts from one multipart posting
     into two seperate groups.
 
- -- Matt Mueller <donut@azstarnet.com>  Thu, 15 Jul 1999 03:24:54 -0700
-
-nget (0.7) unstable; urgency=low
-
+1999-07-12 - v0.7:
   * Stores file read info in a seperate file, so it does not need to resave the
     cache if the only change was to mark some messages read.
   * Added +uulib version of the source distro, for easier compilation.
@@ -171,10 +143,7 @@ nget (0.7) unstable; urgency=low
   * Added check for -luulib in configure.in, seems some distro's have it
     installed as such, instead of -luu.
 
- -- Matt Mueller <donut@azstarnet.com>  Tue,  6 Jul 1999 17:39:30 -0700
-
-nget (0.6) unstable; urgency=low
-
+1999-07-05 - v0.6:
   * Added "file read" flag to stop redundant downloading.
   * Watches for a downloaded multipart file being exactly the same as what
     already exists.  Can be disabled with --disable-filecompare. (Steven Wilcoxon)
@@ -193,10 +162,7 @@ nget (0.6) unstable; urgency=low
   * Implemented use of crc32 checksums to compare headers when piecing together
     multipart messages, maybe save a bit of cpu power.
 
- -- Matt Mueller <donut@azstarnet.com>  Fri, 18 Jun 1999 00:09:59 -0700
-
-nget (0.5) unstable; urgency=low
-
+1999-06-16 - v0.5:
   * a bit of fixes to the error recovery stuff.
   * handles local files with regex special chars (somewhat) better
   * nntp authinfo user/pass authorization supported
@@ -204,16 +170,10 @@ nget (0.5) unstable; urgency=low
     next file, rather than aborting.
   * now compiles on linux libc5
 
- -- Matt Mueller <donut@azstarnet.com>  Wed, 16 Jun 1999 04:41:59 -0700
-
-nget (0.4) unstable; urgency=low
-
+1999-06-15 - v0.4:
   * included aclocal.m4 in the tar.gz
 
- -- Matt Mueller <donut@azstarnet.com>  Tue, 15 Jun 1999 20:59:54 -0700
-
-nget (0.3) unstable; urgency=low
-
+1999-06-15 - v0.3:
   * doesn't download files you already have.. kinda rudementary, could easily
     cause problems if you have a file like "a" in the dir..
   * c_file now has buffered gets() capability, which not only is far faster
@@ -221,20 +181,8 @@ nget (0.3) unstable; urgency=low
   * Changed prot_nntp to use c_file_tcp, with the new bgets(), reducing cpu
     usage significantly (while retrieving articles: 3.0% to <0.1%)
 
- -- Matt Mueller <donut@azstarnet.com>  Wed,  9 Jun 1999 01:46:26 -0700
-
-nget (0.2) unstable; urgency=low
-
+1999-06-07 - v0.2:
   * uses select() on reads.. no more infinate waits when disconnected
 
- -- Matt Mueller <donut@azstarnet.com>  Wed,  7 Jun 1999 02:04:05 -0700
-
-nget (0.1) unstable; urgency=low
-
+1999-06-06 - v0.1:
   * Initial Release.
-
- -- Matt Mueller <donut@azstarnet.com>  Mon,  6 Jun 1999 20:14:06 -0700
-
-Local variables:
-mode: debian-changelog
-End:
