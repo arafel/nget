@@ -48,15 +48,7 @@ int vasprintf(char **str,const char *format,va_list ap){
 #endif
 
 #ifndef HAVE_STRERROR
-//extern int _sys_nerr;
-//extern const char *const _sys_errlist[];
 const char * strerror(int err){
-//	if (err>_sys_nerr)
-//	     return "max errno exceeded";
-//	else if (err<0)
-//	     return "min errno exceeded";
-//	else
-//	     return _sys_errlist[err];
 	static char buf[5];
 	sprintf(buf,"%i",err);
 	return buf;
