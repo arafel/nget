@@ -156,8 +156,8 @@ static void addoptions(void)
 	addoption("keep2",0,'K',0,"keep temp files and don't even try to decode them");
 	addoption("case",0,'c',0,"match casesensitively");
 	addoption("nocase",0,'C',0,"match incasesensitively(default)");
-	addoption("dupecheck",1,'d',"FLAGS","check to make sure you haven't already downloaded files(default -dfi)");
-	addoption("nodupecheck",0,'D',0,"don't check if you already have files(shortcut for -dFI)");
+	addoption("dupecheck",1,'d',"FLAGS","check to make sure you haven't already downloaded files(default -dfiM)");
+	addoption("nodupecheck",0,'D',0,"don't check if you already have files(shortcut for -dFIM)");
 	addoption("tempshortnames",0,'S',0,"use 8.3 names for tempfiles");
 	addoption("templongnames",0,'L',0,"use long names for tempfiles");
 	addoption("temppath",1,'P',"DIRECTORY","path to store tempfiles");
@@ -506,7 +506,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 					options.parse_dupe_flags(loptarg);
 					break;
 				case 'D':
-					options.gflags|= GETFILES_NODUPEFILECHECK | GETFILES_NODUPEIDCHECK;
+					options.parse_dupe_flags("FIM");
 					break;
 				case 'S':
 					options.gflags|= GETFILES_TEMPSHORTNAMES;

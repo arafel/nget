@@ -74,10 +74,15 @@ shows up in the subject.  This works reasonably well, though sometimes the
 filename isn't in the subject.  It can also cause problems if you happen to
 have files in the directory named silly things like "a", in which case all
 messages with the word "a" in them will be skipped.  However, it is still smart
-enough not to skip messages that merely have a word containing "a".  The second
+enough not to skip messages that merely have a word containing "a".
+.br
+The second
 method ("i") is by setting a flag in the header cache that will prevent it from being
 retrieved again.  You can use combos such as -dfi to check both, -dFi to only
 check the flag, -dfI to only check files, etc.
+.br
+The third ("m") will cause files that are found by the dupe file check ("f") to
+be marked as retrieved in the cache.
 .IP "-D/--nodupecheck"
 Don't check either of the --dupecheck methods, retrieve any messages that
 match.

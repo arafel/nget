@@ -7,6 +7,7 @@ case=0
 complete=1
 dupeidcheck=1
 dupefilecheck=1
+dupefilemark=0
 limit=3
 quiet=0
 debug=0
