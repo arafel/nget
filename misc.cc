@@ -69,24 +69,25 @@ struct tm * localtime_r(const time_t *t,struct tm * tmu){
 #endif
 #endif//HAVE_CONFIG_H
 
+long my_timezone=0;
 #if (defined(TIMEZONE_IS_VAR) || defined(_TIMEZONE_IS_VAR))
-#ifdef TIMEZONE_IS_VAR
-#define my_timezone timezone
-#else
-#define my_timezone _timezone
-#endif
 void init_my_timezone(void){
-//	printf("my_timezone=%li\n",my_timezone);
+	tzset();
+#ifdef TIMEZONE_IS_VAR
+	my_timezone=-timezone; //timezone var is seconds west of UTC, not east... weird.
+#else
+	my_timezone=-_timezone;
+#endif
+//	printf("my_timezone1=%li\n",my_timezone);
 }
 #else
-long my_timezone=0;
 void init_my_timezone(void){
 	struct tm tm;
 	time_t t;
 	time(&t);
 	localtime_r(&t,&tm);
 	my_timezone=tm.tm_gmtoff;
-//	printf("my_timezone=%li\n",my_timezone);
+//	printf("my_timezone2=%li\n",my_timezone);
 }
 #endif
 
@@ -297,7 +298,7 @@ time_t decode_mdtm(const char * cbuf){
 	strncpy(buf,cbuf+12,2);
 	tblock.tm_sec=atoi(buf);
 
-	return mktime(&tblock)-my_timezone;
+	return mktime(&tblock)+my_timezone;
 }
 
 char *text_month[13]={"Jan", "Feb", "Mar", "Apr",
@@ -358,11 +359,11 @@ c_regex_r xrfc("^[A-Za-z, ]*([0-9]{1,2})[- ](.{3,9})[- ]([0-9]{2,4}) "TIME_REG2"
 	xeasy("^([0-9]{1,4})[-/]([0-9]{1,2})[-/]([0-9]{2,4})( *"TIME_REG2" *(.*))?$");
 c_regex_nosub xtime_t("^[0-9]+$")//seconds since 1970 (always gmt)
 		;
-time_t decode_textdate(const char * cbuf){
+time_t decode_textdate(const char * cbuf, bool local){
 	struct tm tblock;
 	memset(&tblock,0,sizeof(struct tm));
 	char *tdt=NULL;
-	int td_tz=0;
+	int td_tz=local?my_timezone:0;
 	int yearlen=0;
 	c_regex_subs rsubs;
 	if (!xrfc.match(cbuf,&rsubs)){
@@ -449,7 +450,7 @@ time_t decode_textdate(const char * cbuf){
 		return 0;
 	}else
 		PDEBUG(DEBUG_ALL,"decode_textdate: %s %i %i %i %i %i %i %i",tdt,tblock.tm_year,tblock.tm_mon,tblock.tm_mday,tblock.tm_hour,tblock.tm_min,tblock.tm_sec,td_tz);
-	return mktime(&tblock)-my_timezone-td_tz;
+	return mktime(&tblock)+my_timezone-td_tz;
 }
 #ifdef NO_REGEXPS
 time_t decode_textdate(const char * cbuf){

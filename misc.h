@@ -88,7 +88,7 @@ class strtoker {
 int is_text(const char * f);
 
 time_t decode_mdtm(const char * cbuf);
-time_t decode_textdate(const char * cbuf);
+time_t decode_textdate(const char * cbuf, bool local=true);
 int decode_textmonth(const char * buf);
 int decode_texttz(const char * buf);
 
