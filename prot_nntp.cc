@@ -43,6 +43,7 @@
 #include "log.h"
 #include "file.h"
 #include "nget.h"
+#include "strtoker.h"
 
 int c_prot_nntp::putline(int echo,const char * str,...){
 	va_list ap;

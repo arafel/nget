@@ -27,6 +27,7 @@
 #include <dirent.h>
 #include "nget.h"
 #include "mylockfile.h"
+#include "strtoker.h"
 
 int c_nntp_header::parsepnum(const char *str,const char *soff){
 	const char *p;

@@ -224,38 +224,6 @@ const char * strerror(int err){
 #endif
 #endif
 
-// threadsafe.
-char * goodstrtok(char **cur, char sep){
-//   static char * cur=NULL;
-	char * tmp, *old;
-//   if (buf)
-//     cur=buf;
-	if (!*cur) return NULL;
-	old=*cur;
-	if ((tmp=strchr(*cur,sep))==NULL){
-		*cur=NULL;
-		return old;
-	}
-	tmp[0]=0;
-	*cur=tmp+1;
-	return old;
-}
-strtoker::strtoker(int num,char tok){
-	toks=new char*[num];
-	maxtoks=num;
-	numtoks=0;
-	tokchar=tok;
-}
-int strtoker::tok(char *str){
-	for (numtoks=0;numtoks<maxtoks;numtoks++)
-		if ((toks[numtoks]=goodstrtok(&str,tokchar))==NULL)
-			return 0;
-	if (str)
-		return -1;//maxtoks wasn't enough.
-	else
-		return 0;//done.
-}
-
 char txt_exts[]=".txt.cpp.c.cc.h.pas.htm.html.pl.tcl";
 int is_text(const char * f){
 	char *t,*s;

@@ -67,26 +67,6 @@ int do_utime(const char *f,time_t t);
 // formatstr="%m-%d-%y %H:%M"
 size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%Y%m%dT%H%M%S", int local=1);
 
-//goodstrtok:
-//*cur should be set to string to tokenize on first call.
-//returns token, or NULL if finished.
-//thread safe.
-char * goodstrtok(char **cur, char sep);
-
-//whee!
-class strtoker {
-    protected:
-        char **toks;
-        int maxtoks;
-    public:
-        int numtoks;
-        char tokchar;
-        char * operator[](int i){return toks[i];}
-        int tok(char *str);
-        strtoker(int num,char tok);
-        ~strtoker(){delete toks;}
-};
-
 int is_text(const char * f);
 
 time_t decode_mdtm(const char * cbuf);
