@@ -1,3 +1,5 @@
+#ifndef _FILE_H_
+#define _FILE_H_
 #include "config.h"
 //#include <unistd.h>
 #include <stdio.h>
@@ -64,6 +66,8 @@ class c_file_stream : public c_file {
   public:
 	virtual int isopen(void);	
 	int open(const char *name,const char * mode);
+	c_file_stream(void){fs=NULL;};
+	~c_file_stream(){close();};
 };
 
 #ifdef HAVE_LIBZ
@@ -100,3 +104,4 @@ class c_file_gz : public c_file {
 //};
 #endif
 
+#endif

@@ -163,3 +163,13 @@ int c_file_stream::doclose(void){
 int c_file_stream::isopen(void){
 	return (fs!=0);
 }
+inline size_t c_file_stream::dowrite(const void *data,size_t len){
+	return fwrite(data,1,len,fs);
+}
+inline size_t c_file_stream::doread(void *data,size_t len){
+	return fread(data,1,len,fs);
+}
+inline char * c_file_stream::dogets(char *data,size_t len){
+	return fgets(data,len,fs);
+}
+//int c_file_optgz::open(const char *name,const char * mode,int gz){

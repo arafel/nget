@@ -8,6 +8,8 @@
 #include <string.h>
 #include <utime.h>
 #include <errno.h>
+#include "myregex.h"
+
 
 int doopen(int &handle,const char * name,int access,int mode=0) {
    if ((handle=open(name,access,mode))==-1){
@@ -46,6 +48,24 @@ const char * getfname(const char * src){
      i--;
    return &src[i];
 }
+
+
+int fexists(const char * f){
+	struct stat statbuf;
+	return (!stat(f,&statbuf));
+	
+}
+int testmkdir(const char * dir,int mode){
+	struct stat statbuf;
+	if (stat(dir,&statbuf)){
+		if (mkdir(dir,mode)){
+			return -1;
+		}
+	} else if (!S_ISDIR(statbuf.st_mode)){
+		return -2;
+	}
+	return 0;
+}																	
 
 int do_utime(const char *f,time_t t){
 	struct utimbuf buf;
@@ -164,28 +184,101 @@ int decode_texttz(const char * buf){
 	return i;
 }
 
+//Tue, 25 May 1999 06:23:23 GMT
+
 //Last-modified: Friday, 13-Nov-98 20:41:28 GMT
 //012345678901234567890123456789
 //Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
 //23 May 1999 22:46:41 GMT ; no textual day
+//25 May 99 01:01:48 +0100 ; 2 digit year
+//Mon, 24 May 99 11:53:47 GMT ; 2 digit year
+//3 Jun 1999 12:35:14 -0500 ; non padded day. blah.
+//Tue, 1 Jun 1999 20:36:29 +0100 ; blah again
 //Sun, 23 May 1999 19:34:35 -0500 ; ack, timezone
 
 //Sunday,
 // 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
 //Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format (note, this is used by ls -l --full-time)
 //Jan  4 17:11 			;ls -l format, 17:11 may be replaced by " 1998"
+//c_regex rfc1123("^[A-Za-z, ]*([0-9]{1,2}) (...) ([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (.*)$"),
+//	rfc850("^[A-Za-z, ]*([0-9]{1,2})-(...)-([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (.*)$"),
+c_regex xrfc("^[A-Za-z, ]*([0-9]{1,2})[- ](...)[- ]([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (.*)$"),
+	xasctime("^[A-Za-z, ]*(...) +([0-9]{1,2}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) ([0-9]{2,4}) *(.*)$"),
+	xlsl("^(...) +([0-9]{1,2}) +([0-9:]{4-5})$")
+		;
+time_t decode_textdate(const char * cbuf){
+	struct tm tblock;
+	memset(&tblock,0,sizeof(struct tm));
+	char *tdt=NULL;
+	int td_tz=0;
+	if (!xrfc.match(cbuf)){
+		tdt="xrfc*-date";
+		tblock.tm_mday=atoi(xrfc.subs(1));
+		tblock.tm_mon=decode_textmonth(xrfc.subs(2));
+		tblock.tm_year=atoi(xrfc.subs(3));
+		if(xrfc.sublen(3)>=4)
+			tblock.tm_year-=1900;
+		tblock.tm_hour=atoi(xrfc.subs(4));
+		tblock.tm_min=atoi(xrfc.subs(5));
+		tblock.tm_sec=atoi(xrfc.subs(6));
+		td_tz=decode_texttz(xrfc.subs(7));
+		xrfc.freesub();
+	}else if (!xasctime.match(cbuf)){
+		tdt="asctime-date";
+		tblock.tm_mon=decode_textmonth(xasctime.subs(1));
+			tblock.tm_mday=atoi(xasctime.subs(2));
+		tblock.tm_hour=atoi(xasctime.subs(3));
+		tblock.tm_min=atoi(xasctime.subs(4));
+		tblock.tm_sec=atoi(xasctime.subs(5));
+		tblock.tm_year=atoi(xasctime.subs(6));
+		if(xasctime.sublen(6)>=4)
+			tblock.tm_year-=1900;
+		xasctime.freesub();
+	}else if (!xlsl.match(cbuf)){
+		tdt="ls-l-date";
+		tblock.tm_mon=decode_textmonth(xlsl.subs(1));
+		tblock.tm_mday=atoi(xlsl.subs(2));
+		if (xlsl.subs(3)[2]==':'){
+			struct tm lt;
+//                  lt=localtime(&data.curtime);
+#ifdef CURTIME
+            localtime_r(&CURTIME,&lt);
+#else
+			time_t curtime;
+			time(&curtime);
+            localtime_r(&curtime,&lt);
+#endif
+			tblock.tm_hour=atoi(xlsl.subs(3));
+			tblock.tm_min=atoi(xlsl.subs(3)+3);
+
+			if (lt.tm_mon>=tblock.tm_mon)
+			     tblock.tm_year=lt.tm_year;
+			else
+			     tblock.tm_year=lt.tm_year-1;
+		}else{
+			tblock.tm_year=atoi(xlsl.subs(3))-1900;
+		}
+	}
+	if(!tdt){
+		PERROR("decode_textdate: unknown %s",cbuf);
+		return 0;
+	}else
+		PDEBUG("decode_textdate: %s %i %i %i %i %i %i %i",tdt,tblock.tm_year,tblock.tm_mon,tblock.tm_mday,tblock.tm_hour,tblock.tm_min,tblock.tm_sec,td_tz);
+	return mktime(&tblock)-timezone-td_tz;
+}
+#ifdef NO_REGEXPS
 time_t decode_textdate(const char * cbuf){
 	int len=strlen(cbuf);
 	struct tm tblock;
 	memset(&tblock,0,sizeof(struct tm));
-	char *tdt="unknown";
+	char *tdt=NULL;
 	int td_tz=0;
-//      PERROR("decode_textdate(%s)",cbuf);
+	//      PERROR("decode_textdate(%s)",cbuf);
 	if (len==12 && cbuf[3]==' ' && cbuf[6]==' '){
 		tdt="ls-l-date";
 		tblock.tm_mon=decode_textmonth(cbuf);
 		if (cbuf[4]==' ')
-		     tblock.tm_mday=atoi(cbuf+5);
+			tblock.tm_mday=atoi(cbuf+5);
 		else
 		     tblock.tm_mday=atoi(cbuf+4);
 		if (cbuf[9]==':'){
@@ -210,15 +303,21 @@ time_t decode_textdate(const char * cbuf){
 		}
 	}
 	else if ((len>28 && cbuf[3]==',' && cbuf[19]==':' && cbuf[22]==':')||
-			(len>23 && cbuf[2]==' ' && cbuf[14]==':' && cbuf[17]==':')){
+			(len>27 && cbuf[3]==',' && cbuf[18]==':' && cbuf[21]==':')||
+			(len>23 && cbuf[2]==' ' && cbuf[14]==':' && cbuf[17]==':') ||
+			(len>22 && cbuf[1]==' ' && cbuf[13]==':' && cbuf[16]==':')){
 		//		PERROR("decode_textdate:  rfc1123-date");
 		tdt="rfc1123-date";
-		int ofs;
-		if (cbuf[2]==' ')
+		int ofs,nopad=0;
+		if (cbuf[1]==' '){
+			ofs=-1;nopad=1;
+		}else if (cbuf[2]==' ')
 			ofs=0;
-		else
+		else if (cbuf[18]==':') {
+			ofs=4;nopad=1;
+		}else
 			ofs=5;
-		tblock.tm_mday=atoi(cbuf+ofs);
+		tblock.tm_mday=atoi(cbuf+ofs+nopad);
 		tblock.tm_mon=decode_textmonth(cbuf+3+ofs);
 		tblock.tm_year=atoi(cbuf+7+ofs)-1900;
 		tblock.tm_hour=atoi(cbuf+12+ofs);
@@ -261,12 +360,16 @@ time_t decode_textdate(const char * cbuf){
 			td_tz=decode_texttz(p+20);
 		}
 	}
-
-	PERROR("decode_textdate: %s %i %i %i %i %i %i %i",tdt,tblock.tm_year,tblock.tm_mon,tblock.tm_mday,tblock.tm_hour,tblock.tm_min,tblock.tm_sec,td_tz);
+	if(!tdt){
+		PERROR("decode_textdate: unknown %s",cbuf);
+		return 0;
+	}else
+		PDEBUG("decode_textdate: %s %i %i %i %i %i %i %i",tdt,tblock.tm_year,tblock.tm_mon,tblock.tm_mday,tblock.tm_hour,tblock.tm_min,tblock.tm_sec,td_tz);
 	return mktime(&tblock)-timezone-td_tz;
 }
+#endif
 
 void setint0 (int *i){
-	PERROR("setint0 %p",i);
+	PDEBUG("setint0 %p",i);
 	*i=0;
 }

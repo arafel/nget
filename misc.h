@@ -1,3 +1,5 @@
+#ifndef _MISC_H_
+#define _MISC_H_
 //misc.h
 
 #include <time.h>
@@ -11,6 +13,9 @@ int doopen(int &handle,const char * name,int access,int mode=0);
 int dofopen(FILE * &f,const char * name,const char * mode,int domiscquiet=0);
 
 int dobackup(const char * name);
+
+int fexists(const char * f);
+int testmkdir(const char * dir,int mode);
 
 const char * getfname(const char * src);
 
@@ -30,3 +35,4 @@ int decode_textmonth(const char * buf);
 int decode_texttz(const char * buf);
 
 void setint0 (int *i);
+#endif

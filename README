@@ -1,0 +1,26 @@
+nget 0.1  Copyright 1999 Matt Mueller <donut@azstarnet.com>
+
+Install:
+0) if you d/l'd the -withuulib version go to step 1. If you have uulib already go to step 0.3 now.
+0.1) d/l uulib src from http://www.uni-frankfurt.de/~fp/uudeview
+0.2) unpack it somewhere
+0.3) set the UUDIR option in the makefile to where you put it
+1) edit Makefile to change install location if desired, and to set other compile
+options.
+2) make
+3) make install
+
+Copying:
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version. 
+See the file 'COPYING' for more information.
+
+I would appreciate it if you make modifications if you would send them
+to me for possible inclusion in the main source.
+
+You can get the latest version at 
+http://www.azstarnet.com/~donut/programs.html
+or
+(ftp|http)://sunsite.unc.edu/pub/Linux/apps/?network?

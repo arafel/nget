@@ -1,0 +1,33 @@
+.TH nget 1 "06 Jun 1999"
+.SH NAME
+nget \- retrieve files from NNTP hosts
+.SH SYNOPSIS
+.B nget [...]
+.SH DESCRIPTION
+.B nget
+retrieves messages matching a regular expression, and decodes any files
+contained within.  Multipart messages are automatically pieced together.
+.SH EXAMPLES
+get listing of all files matching penguin*.png from alt.binaries.pictures.linux:
+.br
+.B nget -g alt.binaries.pictures.linux -R "penguin.*\\.png"
+.P
+retrieve all the ones that have more than 50 lines:
+.br
+.B nget -g alt.binaries.pictures.linux -l 50 -r "penguin.*\\.png"
+
+.SH BUGS
+In multi part messages, part 0/x is usually a description.. this will be saved.
+But sometimes the description will be in 1/x, in which case it is not saved.
+This would either need modification of libuu, or some ugly hacks.  I'll look
+into it in a later version.
+.P
+This man page doesn't list many of the options, see
+.B nget --help
+for the full list.
+.SH AUTHOR
+Matt Mueller <donut@azstarnet.com>
+.P
+The latest version, and other programs I have written, are available from:
+.br
+http://www.azstarnet.com/~donut/programs.html

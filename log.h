@@ -1,6 +1,33 @@
+#ifndef _LOG_H_
+#define _LOG_H_
 #include <string.h>
 #define errtoa strerror
 #define PERROR(a, args...) fprintf(stderr,a "\n" , ## args)
-#define PMSG(a, args...) printf(a , ## args)
+#define PMSG(a, args...) printf(a "\n" , ## args)
+//#define PDEBUG(a, args...) printf(a , ## args)
+#define PDEBUG(a, args...) {}
 //#define CURTIME curtime
 //extern time_t curtime;
+extern int debug;
+extern int quiet;
+//transport level errors
+#define EX_T_FATAL 5
+#define EX_T_ERROR 2
+//#define EX_T_NOCON 1
+//protocol errors
+#define EX_P_FATAL 3
+//user errors
+#define EX_U_FATAL 4
+//application errors
+#define EX_A_FATAL 6
+
+#define EX_FATALS 3
+
+class c_error {
+	public:
+		int num;
+		char* str;
+		c_error(int n, const char * s, ...);
+		~c_error();
+};
+#endif
