@@ -1,0 +1,22 @@
+nget (0.13.2-1) unstable; urgency=low
+
+  * New version.
+  * removed unused suidregister thingy from rules.
+
+ -- Matthew Mueller <donut@charon.lan>  Thu,  8 Feb 2001 04:54:40 -0700
+
+nget (0.13.1-1) unstable; urgency=low
+
+  * New version.
+
+ -- Matthew Mueller <donut@azstarnet.com>  Mon,  8 Jan 2001 16:40:39 -0700
+
+nget (0.13-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Matthew Mueller <donut@azstarnet.com>  Tue,  5 Sep 2000 19:24:28 -0700
+
+Local variables:
+mode: debian-changelog
+End:
