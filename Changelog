@@ -1,3 +1,9 @@
+nget (0.??) unstable; urgency=low
+
+  * Fix exception if files in current dir contained '{' or '}'. (reported by Brian Keefer)
+
+ -- ??
+
 nget (0.13.2) unstable; urgency=low
 
   * Add trailing / onto NGETHOME var so you don't need to.

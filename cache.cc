@@ -199,7 +199,7 @@ void buildflist(filematchlist **l,longlist **a){
 #endif
 		cp=globbuf.gl_pathv[i];
 		while (*cp){
-			if (strchr("()|[]\\.+*^$",*cp))
+			if (strchr("{}()|[]\\.+*^$",*cp))
 				buf[sl++]='\\';//escape special chars
 			buf[sl++]=*cp;
 			cp++;
