@@ -256,8 +256,11 @@ c_nntp_files_u* c_nntp_cache::getfiles(const string &path, const string &temppat
 					goto file_match_loop_end;//can't continue out of multiple loops
 			}
 
-			if (!(flags&GETFILES_NODUPEFILECHECK) && checkhavefile(flist,f->subject.c_str(),f->bamid(),f->bytes()))
+			if (!(flags&GETFILES_NODUPEFILECHECK) && checkhavefile(flist,f->subject.c_str(),f->bamid(),f->bytes())){
+				if (flags&GETFILES_DUPEFILEMARK)
+					midinfo->insert(f->bamid());
 				continue;
+			}
 //			f->inc_rcount();
 //			fc->files[banum]=f;
 			//fc->files.insert(t_nntp_files_u::value_type(f->badate(),f));

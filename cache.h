@@ -222,6 +222,7 @@ class c_nntp_files_u {
 #define GETFILES_GETINCOMPLETE	2
 #define GETFILES_NODUPEIDCHECK	4
 #define GETFILES_NODUPEFILECHECK	128
+#define GETFILES_DUPEFILEMARK		256
 
 class c_nntp_server_info {
 	public:

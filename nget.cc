@@ -296,6 +296,8 @@ struct nget_options {
 				case 'I':gflags|= GETFILES_NODUPEIDCHECK;break;
 				case 'f':gflags&= ~GETFILES_NODUPEFILECHECK;break;
 				case 'F':gflags|= GETFILES_NODUPEFILECHECK;break;
+				case 'm':gflags|= GETFILES_DUPEFILEMARK;break;
+				case 'M':gflags&= ~GETFILES_DUPEFILEMARK;break;
 				default:
 					throw new c_error(EX_U_FATAL,"unknown dupe flag %c",*opt);
 			}
@@ -844,6 +846,8 @@ int main(int argc, char ** argv){
 					options.gflags|= GETFILES_NODUPEIDCHECK;
 				if (!cfg.data.getitemi("dupefilecheck",&t) && t==0)
 					options.gflags|= GETFILES_NODUPEFILECHECK;
+				if (!cfg.data.getitemi("dupefilemark",&t) && t==1)
+					options.gflags|= GETFILES_DUPEFILEMARK;
 				if (!cfg.data.getitemi("tempshortnames",&t) && t==1)
 					options.gflags|= GETFILES_TEMPSHORTNAMES;
 				options.set_makedirs(cfg.data.getitema("makedirs"));
