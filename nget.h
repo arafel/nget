@@ -34,5 +34,7 @@ extern c_server_priority_grouping_list priogroups;*/
 
 #define PRIVMODE (S_IRUSR | S_IWUSR)
 #define PUBMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+//#define PUBXMODE (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
+#define PUBXMODE (S_IRWXU|S_IRWXG|S_IRWXO)
 
 #endif

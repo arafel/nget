@@ -1,3 +1,13 @@
+nget (0.13) unstable; urgency=low
+
+  * Locks midinfo files better.  Previous versions would not have corruption,
+    but would lose one of the updates, if two nget instances tried to
+    update the midinfo file at the same time.
+  * Added -m option to optionally make directories that do not exist for
+    -p and -P.
+
+ -- Matt Mueller <donut@azstarnet.com>  Tue,  5 Sep 2000 21:41:16 -0700
+  
 nget (0.12) unstable; urgency=low
 
   * Fixed segfault on invalid param to -F

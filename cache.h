@@ -308,7 +308,7 @@ class c_mid_info {
 			}
 		}
 		void do_delete_fun(c_mid_info &rel_mid);
-		int load(string path,int merge=0);
+		int load(string path,bool merge=0,bool lock=1);
 		int save(void);
 		c_mid_info(string path);
 		~c_mid_info();

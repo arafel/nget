@@ -103,11 +103,16 @@ config.status: configure
 	
 clean:
 	-rm nget ngetlite *.o
+	-make -C uulib clean
 
 distclean: clean
-	-rm config.h config.cache config.log Makefile stamp-h .depend
+	-rm config.status config.h config.cache config.log Makefile stamp-h .depend *~ .*~
+	-make -C uulib distclean
 #	-rm *~ config.h config.cache config.log Makefile stamp-h .depend
 #	-cp .depend.dist .depend
+
+distclean-killuu: distclean
+	-rm -r uulib
 		 
 
 #ifeq (.depend,$(wildcard .depend))

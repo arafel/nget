@@ -1,4 +1,4 @@
-.TH nget 1 "18 Aug 2000"
+.TH nget 1 "05 Sep 2000"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -40,6 +40,10 @@ Specify a file to load a list of command line args from.  Looks in ~/.nget3/list
 Path to store subsequent retrieves.  Relative to path which nget was started in.
 (Except in the case of inside a -@, which will be relative to the cwd at the
 time of the -@.)
+.IP "-m/--makedirs no,yes,ask"
+Make dirs specified by -p and -P.  Default is no.  If yes, will make dirs automatically.  If ask, nget will prompt the user
+when trying to change to a dir that does not exist.  Currently this option only works for single level of non-existance, like
+mkdir.  A future version of nget will support multi-level creating, like mkdir -p.
 .IP "-T/--testmode"
 Causes --retrieve to merely print out all matching files.
 .IP "-t/--tries int"
@@ -115,6 +119,8 @@ Integral: limit, tries, debug, delay
 Float: curservmult
 .br
 Boolean(0/1): case, complete, dupeidcheck, dupefilecheck, quiet, tempshortnames
+.br
+yes/no/ask: makedirs
 .P
 Host configuration is done in the halias section, with a subsection for each
 host containing its address, unique id, and optionally user, pass, fullxover, and linelenience
@@ -286,7 +292,7 @@ Matt Mueller <donut@azstarnet.com>
 .P
 The latest version, and other programs I have written, are available from:
 .br
-http://www.azstarnet.com/~donut/programs.html
+http://www.azstarnet.com/~donut/programs/
 .SH ACKNOWLEDGEMENTS
 Frank Pilhofer, who write uulib, which nget depends upon for uudecoding the files once they are downloaded.
 http://zeus.informatik.uni-frankfurt.de/%7Efp/uudeview/

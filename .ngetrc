@@ -12,6 +12,7 @@ quiet=0
 debug=0
 tempshortnames=0
 curservmult=2.0
+makedirs=no
 
 //hostname aliases
 {halias
@@ -19,6 +20,7 @@ curservmult=2.0
   addr=news.host1.com
   fullxover=1
   id=1
+  linelenience=0,2
  }
  {goodhost
   addr=nntp.goodhost.net
@@ -29,6 +31,7 @@ curservmult=2.0
  {badhost
   addr=hah.bad.host.org
   id=384847
+  linelenience=3
  }
 }
 

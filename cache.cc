@@ -21,6 +21,7 @@
 #include "misc.h"
 #include "log.h"
 #include SLIST_H
+#include <memory>
 #include <glob.h>
 #include <errno.h>
 #include "nget.h"
@@ -732,7 +733,7 @@ void c_mid_info::do_delete_fun(c_mid_info &rel_mid){
 c_mid_info::c_mid_info(string path){
 	load(path);
 }
-int c_mid_info::load(string path,int merge){
+int c_mid_info::load(string path,bool merge,bool lock){
 	if (!merge){
 		clear();
 		changed=0;
@@ -750,7 +751,13 @@ int c_mid_info::load(string path,int merge){
 		file=path;
 	int line=0;
 	f.initrbuf(1024);
-	c_lockfile locker(path,WANT_SH_LOCK);
+	//c_lockfile locker(path,WANT_SH_LOCK);
+	auto_ptr<c_lockfile> locker;
+	if (lock){
+		auto_ptr<c_lockfile> l(new c_lockfile(path,WANT_SH_LOCK));
+		locker=l;
+		//locker=new c_lockfile(path,WANT_SH_LOCK);//why can't we just do this?  sigh.
+	}
 //	c_regex_r midre("^(.+) ([0-9]+) ([0-9]+)$");
 	strtoker toker(3,' ');
 	if (!f.open(path.c_str(),
@@ -788,14 +795,14 @@ int c_mid_info::save(void){
 #else
 	c_file_fd f;
 #endif
+	c_lockfile locker(file,WANT_EX_LOCK);//lock before we read, so that multiple copies trying to save at once don't lose changes.
 	{
 		unsigned int count1=states.size();
-		load(file,1);//merge any changes that might have happened
+		load(file,1,0);//merge any changes that might have happened
 		if (count1!=states.size()){
 			if (debug){printf("saving mid_info: merged something...(%i)\n",states.size()-count1);}
 		}
 	}
-	c_lockfile locker(file,WANT_EX_LOCK);
 	int nums=0;
 	if(!f.open(file.c_str(),
 #ifdef HAVE_LIBZ

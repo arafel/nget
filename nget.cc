@@ -47,7 +47,7 @@ extern "C" {
 
 time_t lasttime;
 
-#define NUM_OPTIONS 28
+#define NUM_OPTIONS 29
 #ifndef HAVE_LIBPOPT
 
 #ifndef HAVE_GETOPT_LONG
@@ -114,6 +114,7 @@ static void addoptions(void)
 	addoption("retrieve",1,'r',"REGEX","retrieve files matching regex");
 	addoption("list",1,'@',"LISTFILE","read commands from listfile");
 	addoption("path",1,'p',"DIRECTORY","path to store subsequent retrieves");
+	addoption("makedirs",1,'m',"no,yes,ask","make dirs specified by -p and -P");
 //	addoption("mark",1,'m',"MARKNAME","name of high water mark to test files against");
 //	addoption("testretrieve",1,'R',"REGEX","test what would have been retrieved");
 	addoption("testmode",0,'T',0,"test what would have been retrieved");
@@ -137,7 +138,7 @@ static void addoptions(void)
 	addoption(NULL,0,0,NULL,NULL);
 };
 static void print_help(void){
-      printf("nget v0.12 - nntp command line fetcher\n");
+      printf("nget v0.13 - nntp command line fetcher\n");
       printf("Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -226,6 +227,7 @@ struct nget_options {
 	int maxretry,retrydelay;
 	ulong linelimit;
 	int gflags,testmode,badskip,qstatus;
+	char makedirs;
 	c_group_info::ptr group;//,*host;
 //	c_data_section *host;
 	c_server *host;
@@ -240,7 +242,7 @@ struct nget_options {
 	nget_options(void){
 		do_get_path(startpath);
 	}
-	nget_options(nget_options &o):maxretry(o.maxretry),retrydelay(o.retrydelay),linelimit(o.linelimit),gflags(o.gflags),testmode(o.testmode),badskip(o.badskip),qstatus(o.qstatus),group(o.group),host(o.host)/*,user(o.user),pass(o.pass)*/,path(o.path),startpath(o.path),temppath(o.temppath),writelite(o.writelite){
+	nget_options(nget_options &o):maxretry(o.maxretry),retrydelay(o.retrydelay),linelimit(o.linelimit),gflags(o.gflags),testmode(o.testmode),badskip(o.badskip),qstatus(o.qstatus),makedirs(o.makedirs),group(o.group),host(o.host)/*,user(o.user),pass(o.pass)*/,path(o.path),startpath(o.path),temppath(o.temppath),writelite(o.writelite){
 /*		if (o.path){
 			path=new char[strlen(o.path)+1];
 			strcpy(path,o.path);
@@ -269,8 +271,74 @@ struct nget_options {
 			opt++;
 		}
 	}
+	int set_makedirs(const char *s){
+		if (!s) {
+			//printf("set_makedirs s=NULL\n");
+			return 0;
+		}
+		if (strcasecmp(s,"yes")==0)
+			makedirs=1;
+		else if (strcasecmp(s,"ask")==0)
+			makedirs=2;
+		else if (strcasecmp(s,"no")==0)
+			makedirs=0;
+		else{
+			printf("set_makedirs invalid option %s\n",s);
+			return 0;
+		}
+		return 1;
+	}
 //	~nget_options(){del_path();}
 };
+int makedirs(const char *dir, int mode){
+	//eventually, maybe, this shall be made recursive. for now only the leaf can be made.
+	return mkdir(dir,mode);
+}
+int maybe_mkdir_chdir(const char *dir, char makedir){
+	if (chdir(dir)){
+		if (errno==ENOENT){
+			bool doit=0;
+			if (makedir==2){
+				char buf[40],*p;
+				if (dir[0]!='/'){
+					goodgetcwd(&p);
+					printf("in %s, ",p);
+					free(p);
+				}
+				printf("do you want to make dir %s?",dir);fflush(stdout);
+				while (1){
+					if (fgets(buf,39,stdin)){
+						if ((p=strpbrk(buf,"\r\n"))) *p=0;
+						if (strcasecmp(buf,"yes")==0 || strcasecmp(buf,"y")==0){
+							doit=1;break;
+						}
+						if (strcasecmp(buf,"no")==0 || strcasecmp(buf,"n")==0){
+							break;
+						}
+						printf("%s?? enter y[es], or n[o].\n",buf);
+					}else{
+						perror("fgets");
+						return -1;
+					}
+				}
+			}else if(makedir==1)
+				doit=1;
+			if (doit){
+				if (makedirs(dir,PUBXMODE)){
+					perror("mkdir");
+					return -1;
+				}
+				if (chdir(dir)){
+					perror("chdir");
+					return -1;
+				}
+				return 0;
+			}
+		}
+		return -1;
+	}
+	return 0;
+}
 struct s_arglist {
 	int argc;
 	char **argv;
@@ -439,8 +507,11 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 					options.writelite=loptarg;
 					printf("writelite to %s\n",options.writelite.c_str());
 					break;
+				case 'm':
+					options.set_makedirs(loptarg);
+					break;
 				case 'P':
-					if (!chdir(loptarg)){
+					if (!maybe_mkdir_chdir(loptarg,options.makedirs)){
 						options.get_temppath();
 						chdir(options.path.c_str());
 						printf("temppath:%s\n",options.temppath.c_str());
@@ -452,7 +523,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 				case 'p':
 					{
 						int i=0;
-						if (!chdir(options.startpath.c_str()) && (i=1) && !chdir(loptarg)){
+						if (!chdir(options.startpath.c_str()) && (i=1) && !maybe_mkdir_chdir(loptarg,options.makedirs)){
 							options.get_path();
 							printf("path:%s\n",options.path.c_str());
 						}else{
@@ -669,6 +740,7 @@ int main(int argc, char ** argv){
 		}
 		else {
 			nget_options options;
+			options.makedirs=0;
 			options.maxretry=20;
 			options.retrydelay=1;
 			options.badskip=0;
@@ -723,6 +795,7 @@ int main(int argc, char ** argv){
 					options.gflags|= GETFILES_NODUPEFILECHECK;
 				if (!cfg.data.getitemi("tempshortnames",&t) && t==1)
 					options.gflags|= GETFILES_TEMPSHORTNAMES;
+				options.set_makedirs(cfg.data.getitema("makedirs"));
 			}
 			options.get_path();
 			nntp.initready();

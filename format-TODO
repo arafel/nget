@@ -1,0 +1,178 @@
+wishlist of things to add to nget:
+
+- proper ordering of -p path settings (ie, no need to respecify -G or -g to set group options)
+- less verbose reporting modes:
+    all standard information, but no percentage counters (to include statistics)
+    ability to put logging/statistics information to stdout or stderr, and percentage counters to the other
+- ability to save all header and associated textual information with decoded files, at least in the same directory
+    as specified by -p path, either in separate files or as a specified filename to append to (in which case files
+    without binaries would also be appended to the file).  Can be absolute also.  For decoded files, also store
+    uudecode output in the message body (replacing the old uuencoded information).
+    To make the file mutt readable, allow an option to add a "From blah@foo.net Mon Jun 21 21:01:34 2000" line to the top
+    of each header section (of course, containing relevant information from the article).
+- add option to create non-existant paths specified with -p or -P
+
+- verbosity levels: (<- superceded below)
+    * 0: print nothing
+    * 1: print group, directory, and regexp, one per line, for every regexp in
+	 the options.
+    * 2: as 1, but also print one line 
+
+- format lines: have one for each possible action along the way (mostly).  Command line or .ngetrc file. For now:
+    -g, -G, -p, -P, -r, -R, -d
+    * then two for every article downloaded (pre and post), two for each article decoded (pre and post), and
+    * one auto-update line for interactive update information.
+    * newlines are not automatic, "\n" will need to be explicit
+    * each status line will use the same nested format style and replacement characters as follows:
+    %[<loc>][&<pad>][!][<width>][.<num> ...]<repcode>[{<subformat>[:s/<pat>/<subs>/<flags> ...]}]
+    ie: "%p" might substitute the path, "%<-20r" might left-justify the regex used in a field of 20 characters,
+	chopping extra characters if the width is exceeded.
+
+	(some codes, such as header size, will not apply to every format line)
+	%p	current d/l path
+	%P	current temp path
+	%r	current regex or expression
+	%g	current groupalias
+	%G	current groupname
+	%d	download flags set
+	%T	whether testmode is set
+	%t	current time
+	%i	number of bytes downloaded for this regexp/expression so far
+	%I	total expected for this -r/-R
+	%j	# bytes so far for this path
+	%J	total expected for this -p
+	%k	total number of bytes downloaded this session
+	%K	expected total number of bytes to download
+	%%	literal "%" character, unless <pad> is specified, in which case <fieldwidth> of those are inserted.
+
+	(per-article codes)
+	%B	size of article in bytes
+	%l	number of lines in article
+	%a	author
+	%s	subject
+	%n	part number
+	%N	maximum part number
+	%D	date and time
+	%z	article number
+	%h{<header>}	the specified header (ie, from, subject, etc.)
+	
+	(interactive and post-download codes) - includes per-article codes
+	%R	download rate
+	%b	number of bytes downloaded
+	%e	time elapsed
+	%E	estimated (total) time until completion (ie, # of seconds)
+	%x	transfer start time
+	%X	estimated (actual) time of completion
+
+	location codes:
+	<	left justify
+	|	center justify
+	=	outer justify (if the code specifies a field with 2 segments, segments are split
+	>	right justify
+
+	chop code:
+	-	truncates line on the right if it is too long for the fieldwidth.
+		Preserves column integrity.  without it, no truncation will occur.
+		
+    Or the system could be implemented with a heirarchy of specifiers.
+    
+    %[<loc>][&<pad>][!][<width>][.<num> ...]<repcode>[{<subformat>[:s/<pat>/<subs>/<flags> ...]}]
+    ie: "%p" might substitute the path, "%<-20r" might left-justify the regex used in a field of 20 characters,
+	chopping extra characters if the width is exceeded.
+
+	Top hierarchy letter codes:
+	p[cdt]	paths: c.urrent, d.ownload, t.emp
+	R		current regexp or expression
+	g		groupaliases
+	G		group spec (dotted)
+	c.Tif? :	conditional: T.est code enabled, i.n midfile do check, f.ile exists do check
+	s[<unit>].-=afrptsl	file/stream/string size (in unit blocks: characters, Kb, etc.)
+	r[<unit>[/<timeunit>]].afrptsl	transfer (d/l) rate (uc: average, lc: current snapshot)
+	l[<unit>].afrptsl	lines so far (lowercase) or total expected (uppercase) for s type sub specifiers
+	n.pP		number: current p.art, total P.arts
+	d.ca		date/time specification: c.urrent, a.article
+	t.afrptsl	time duration: same sub-specs as for s
+	h.aispdAISPD	header shortcut extractors (uppercase: entire line, lower: header word + ":" excluded):
+			a.uthor, article i.d, s.ubject, p.ath, d.ate of post, etc...
+	{}		header line extraction code
+	//		header match extraction code (any match from within header will trigger inclusion)
+	
+	<track> is a trackable unit, separated with . for current, = for total, and - for remaining
+	    a.rticle
+	    f.ile
+	    r.egexp same downloaded files combined
+	    p.ath same
+	    t.emp path same
+	    s.ession same
+	    l.og same
+
+	<unit> is one of:
+	    unspecified (sized to fit field width, but will append abbrev.  unit as specified below)
+	    b:	bits
+	    B:	bytes
+	    k:  1000 bytes
+	    K:  kilobytes (1024)
+	    m:  10^6
+	    M:  2^20 (mega)
+	    g:  10^9
+	    G:	2^30 (giga)
+	    t:	10^12
+	    T:	2^40 (tera)
+	    
+	(some codes, such as header size, will not apply to every format spec)
+	%p.c	current base path (where nget was initiated from)
+	%p.d	current d/l path
+	%p.t	current temp path
+	%R	current regex or expression
+	%g	current groupalias
+	%G	current groupname
+	%c.T?<setformat>:<elsformat>	whether testmode is set
+	%c.f?:	download flag f set
+	%c.i?:	download flag i set
+	%d.c	current date/time
+	%d.u	date of current group update
+	%s.r	total number of bytes downloaded for this regexp/expression so far
+	%s.R	total expected for this -r/-R
+	%s.p	# bytes so far for this path
+	%s.P	total expected for this -p
+	%s.s	total number of bytes downloaded this session
+	%s.S	expected total number of bytes to download
+	%%	literal "%" character, unless <pad> is specified, in which case <fieldwidth> of those are inserted.
+
+	(per-article codes)
+	%s.A	(expected) size of article in bytes
+	%l.A	(expected) number of lines in article
+	%h.a	author
+	%h.s	subject
+	%h.i	message id
+	%h.p	post path
+	%{<header>}	the specified header (ie, from, subject, etc.)
+	%n.p	part number
+	%n.P	maximum part number
+	%n.o	[x/X] part display (part x of X total)
+	%n.a	article number
+	%d.p	date and time of article postage
+	
+	(interactive and post-download codes) - includes per-article codes
+	%r.t	(pseudo-)current transfer rate
+	%r.T	average transfer rate
+	%s.a	total number of bytes downloaded so far
+	%l.a	number of lines downloaded so far
+	%t.a	time elapsed
+	%t.A	estimated (total) time until completion (ie, # of seconds)
+	%d.p	transfer start time
+	%d.P	estimated (actual) time of completion
+
+	location codes:
+	<	left justify
+	|	center justify
+	=	outer justify (if the code specifies a field with 2 segments, segments are split
+	>	right justify
+
+	chop codes:
+	-	truncates line on the right if it is too long for the fieldwidth.
+		Preserves column integrity.  without it, no truncation will occur.
+		On two segment fields, truncates at division
+	*	chops an extra character to insert a * to show truncation.
+	.	chops 3 extra characters to insert a ... if to long.
+	+	inserts width worth of + if line to long, fortran style.  Not recommended
