@@ -381,7 +381,7 @@ time_t decode_textdate(const char * cbuf, bool local){
 	}else if (!xasctime.match(cbuf,&rsubs)){
 		tdt="asctime-date";
 		tblock.tm_mon=decode_textmonth(rsubs.subs(1));
-			tblock.tm_mday=atoi(rsubs.subs(2));
+		tblock.tm_mday=atoi(rsubs.subs(2));
 		tblock.tm_hour=atoi(rsubs.subs(3));
 		tblock.tm_min=atoi(rsubs.subs(4));
 		if(rsubs.sublen(5)>0)
