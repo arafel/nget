@@ -25,7 +25,6 @@
 #include <string>
 
 #include <errno.h>
-//#include <unistd.h>
 #include "log.h"
 
 //liblockfile doesn't support anything but exclusive locks, so these are only "wants"
@@ -56,6 +55,7 @@ class c_lockfile{
 };
 #else //!HAVE_LIBLOCKFILE
 #ifdef HAVE_FLOCK
+#include <unistd.h>
 #include <sys/file.h>
 class c_lockfile{
 	public:

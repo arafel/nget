@@ -801,7 +801,7 @@ int c_mid_info::save(void){
 #ifdef HAVE_LIBZ
 				"wb"
 #else
-				O_CREAT|O_WRONLY|O_TRUNC
+				O_CREAT|O_WRONLY|O_TRUNC,PUBMODE
 #endif
 			   )){
 		if (debug){printf("saving mid_info: %i infos..",states.size());fflush(stdout);}

@@ -1,4 +1,4 @@
-.TH nget 1 "12 Apr 2000"
+.TH nget 1 "13 Apr 2000"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -29,7 +29,9 @@ of lines, add it as part of the expression.
 .IP "-@/--list LISTFILE"
 Specify a file to load a list of command line args from.  Looks in ~/.nget3/lists/ dir by default.
 .IP "-p/--path DIRECTORY"
-Path to store subsequent retrieves
+Path to store subsequent retrieves.  Relative to path which nget was started in.
+(Except in the case of inside a -@, which will be relative to the cwd at the
+time of the -@.)
 .IP "-T/--testmode"
 Causes --retrieve to merely print out all matching files.
 .IP "-t/--tries int"
@@ -102,6 +104,8 @@ Global options that can be specified are:
 .br
 Integral: limit, tries, debug, delay
 .br
+Float: curservmult
+.br
 Boolean(0/1): case, complete, dupeidcheck, dupefilecheck, quiet, tempshortnames
 .P
 Host configuration is done in the halias section, with a subsection for each
@@ -142,6 +146,9 @@ server=prio-multiplier, and the special item _level=float(_level is unused in
 nget 0.8, but reserved for future use).  The priority group
 "trustsizes" also has special meaning, and is used to choose which servers
 reporting of article line/byte counts to trust when reporting to the user.
+When retrieving articles, nget will multiply the current servers priority by
+the global setting "curservmult" (default 2.0), this can be used to avoid
+excesive server switching.  (set it to 1.0 if you want to disable it).
 .br
 For example, the following section defines the default priority group and the
 trustsizes priority group.  If all hosts have a certain article, goodhost will
@@ -193,19 +200,30 @@ grouping when deciding what server to retrieve from.
 .br
 .B }
 .SH EXAMPLES
-get listing of all files matching penguin*.png from alt.binaries.pictures.linux:
+get listing of all files matching penguin.*png from alt.binaries.pictures.linux (note this is a regex, equivilant to standard shell glob of penguin*png.. see the regex(7) or grep manpage for more info on regular expressions.)
 .br
-.B nget -g alt.binaries.pictures.linux -DTr "penguin.*png"
+.B
+nget -g alt.binaries.pictures.linux -DTr "penguin.*png"
 .P
 retrieve all the ones that have more than 50 lines:
 .br
-.B nget -g alt.binaries.pictures.linux -l 50 -r "penguin.*png"
+.B
+nget -g alt.binaries.pictures.linux -l 50 -r "penguin.*png"
 .P
 equivilant to above, using -R:
 .br
-.B nget -g alt.binaries.pictures.linux -R "lines 50 > subject penguin.*png == &&"
+.B
+nget -g alt.binaries.pictures.linux -R "lines 50 > subject penguin.*png == &&"
 .br
 (basically (lines > 50) && (subject == penguin.*png))
+.SH NOTES
+Running multiple copies of nget at once should be safe.  It uses file locking,
+so there should be no way for the files to actually get corrupted.
+However if you have two ngets doing a -g on the same group at the same time, it
+would duplicate the download for both processes.  If you are using -G there is
+no problem at all.  (Theoretically you might be able to cause some sort of
+problems by downloading the same files from the same group in the same
+directory at the same time..)
 .SH ENVIRONMENT
 .PP
 .IP "HOME"
@@ -221,15 +239,15 @@ support this in the next version of nget.
 .PP
 .IP "~/.nget3/"
 All configuration and cache files are stored here.  Changed to .nget3/ because
-config/cache formats changed in nget 0.8. (nget3 directory name is for file
+config/cache formats changed in nget 0.8. (the 3 in the directory name is for file
 format version 3, not nget version 3.)
 .IP "~/.nget3/.ngetrc"
 Configuration file.  If you store authentication information here, be sure to
-set in readable only by owner.
+set it readable only by owner.
 .IP "~/.nget3/lists/"
 Default directory for listfiles.
 .SH BUGS
-There should be some quotes in those above examples, but I'm no man page guru.
+The config examples would be easier to read if they were indented, but I'm no man page guru.
 If someone wants to clean up this manpage and fix the little things like that,
 feel free.
 .P
@@ -255,3 +273,6 @@ Beej's Guide to Network Programming at
 http://www.ecst.csuchico.edu/~beej/guide/net/
 .P
 Jean-loup Gailly and Mark Adler, for the zlib library.
+.SH "SEE ALSO"
+.BR regex (7),
+.BR grep (1)

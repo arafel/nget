@@ -11,6 +11,7 @@ limit=3
 quiet=0
 debug=0
 tempshortnames=0
+curservmult=2.0
 
 //hostname aliases
 {halias

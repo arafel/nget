@@ -60,7 +60,9 @@ struct option {
 #endif
 
 static struct option long_options[NUM_OPTIONS+1];
-#define OPTIONS "-qh:g:G:r:R:@:Tt:s:l:iIcCdD?"
+//#define OPTIONS "-qh:g:G:r:R:p:@:Tt:s:l:iIkKcCd:DSLP:w:N?"
+static string getopt_options="-";//lets generate this in addoption, to avoid forgeting to update a define. (like in v0.8, oops)
+#define OPTIONS getopt_options.c_str()
 
 #else //!HAVE_LIBPOPT
 
@@ -89,6 +91,9 @@ static void addoption(char *longo,int needarg,char shorto,char *adesc,char *desc
 	long_options[cur].has_arg=needarg;
 	long_options[cur].flag=0;
 	long_options[cur].val=shorto;
+	getopt_options+=shorto;
+	if (needarg)
+		getopt_options+=':';
 #endif //!HAVE_LIBPOPT
 	ohelp[cur].namelen=longo?strlen(longo):0;
 	ohelp[cur].arg=adesc;
@@ -131,7 +136,7 @@ static void addoptions(void)
 	addoption(NULL,0,0,NULL,NULL);
 };
 static void print_help(void){
-      printf("nget v0.8 - nntp command line fetcher\n");
+      printf("nget v0.9 - nntp command line fetcher\n");
       printf("Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -225,11 +230,16 @@ struct nget_options {
 	c_server *host;
 //	char *user,*pass;//,*path;
 	string path;
+	string startpath;
 	string temppath;
 	string writelite;
 	//nget_options(void){path=NULL;}
-	nget_options(void){}
-	nget_options(nget_options &o):maxretry(o.maxretry),retrydelay(o.retrydelay),linelimit(o.linelimit),gflags(o.gflags),testmode(o.testmode),badskip(o.badskip),qstatus(o.qstatus),group(o.group),host(o.host)/*,user(o.user),pass(o.pass)*/,path(o.path),temppath(o.temppath),writelite(o.writelite){
+	void do_get_path(string &s){char *p;goodgetcwd(&p);s=p;free(p);}
+
+	nget_options(void){
+		do_get_path(startpath);
+	}
+	nget_options(nget_options &o):maxretry(o.maxretry),retrydelay(o.retrydelay),linelimit(o.linelimit),gflags(o.gflags),testmode(o.testmode),badskip(o.badskip),qstatus(o.qstatus),group(o.group),host(o.host)/*,user(o.user),pass(o.pass)*/,path(o.path),startpath(o.path),temppath(o.temppath),writelite(o.writelite){
 /*		if (o.path){
 			path=new char[strlen(o.path)+1];
 			strcpy(path,o.path);
@@ -239,7 +249,6 @@ struct nget_options {
 	}
 //	void del_path(void){if (path){/*printf("deleteing %s(%p-%p)\n",path,this,path);*/free(path);path=NULL;}}
 	//void get_path(void){/*printf("get_path\n");*/del_path();goodgetcwd(&path);}
-	void do_get_path(string &s){char *p;goodgetcwd(&p);s=p;free(p);}
 	void get_path(void){do_get_path(path);}
 	void get_temppath(void){
 		do_get_path(temppath);
@@ -438,12 +447,15 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 					}
 					break;
 				case 'p':
-					if (!chdir(loptarg)){
-						options.get_path();
-						printf("path:%s\n",options.path.c_str());
-					}else{
-						printf("could not change to %s\n",loptarg);
-						return -1;
+					{
+						int i=0;
+						if (!chdir(options.startpath.c_str()) && (i=1) && !chdir(loptarg)){
+							options.get_path();
+							printf("path:%s\n",options.path.c_str());
+						}else{
+							printf("could not change to %s\n",i==0?options.startpath.c_str():loptarg);
+							return -1;
+						}
 					}
 					break;
 				case ':':
@@ -667,6 +679,15 @@ int main(int argc,char ** argv){
 					return 1;
 				}
 				nconfig.setlist(halias,hpriority,galias);
+				const char *cp=cfg.data.getitema("curservmult");
+				float f;
+				if (cp){
+					f=atof(cp);
+					if (f)
+						nconfig.curservmult=f;
+					else
+						printf("invalid curservmult: %s\n",cp);
+				}
 				int t;
 				/*			if (!halias || !(options.host=halias->getitema("default")))
 							options.host=getenv("NNTPSERVER")?:"";

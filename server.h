@@ -99,6 +99,7 @@ class c_nget_config {
 		t_server_priority_grouping_list prioritygroupings;
 		c_server_priority_grouping *trustsizes;
 		t_group_info_list groups;
+		float curservmult;
 
 		c_server* getserver(string name){
 			serv_match_by_name name_matcher;
@@ -209,6 +210,9 @@ class c_nget_config {
 						addgroup(ds->key,ds->getitems("group"),ds->getitems("prio"));
 					}
 				}
+		}
+		c_nget_config(){
+			curservmult=2.0;
 		}
 		~c_nget_config(){
 			t_server_list::iterator i;

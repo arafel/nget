@@ -356,7 +356,8 @@ int c_prot_nntp::nntp_doarticle_prioritize(c_nntp_part *part,t_nntp_server_artic
 		prio=group->priogrouping->getserverpriority(sa->serverid);
 		if (curservsapi){
 			if (curserverid==sa->serverid)
-				prio*=2.0;//TODO: set curservpriomult upon cfg?
+				prio*=nconfig.curservmult;
+//				prio*=2.0;//TODO: set curservpriomult upon cfg?
 		}
 		PDEBUG(DEBUG_MED,"prioritizing server %lu article %lu prio %f",sa->serverid,sa->articlenum,prio);
 		if (curservsapi && curserverid==sa->serverid)

@@ -1,3 +1,17 @@
+nget (0.9) unstable; urgency=low
+
+  * fixed command line arg problems when built with getopt rather that libpopt.
+  * fixed creating _midinfo files with no permissions problem (caused error
+    after trying to use the group for the second time on some systems).
+  * fixed implicit declaration of function close() in mylockfile.h on some
+    systems.
+  * fixed multiple uses of -p being relative to each other rather than the
+    start directory.
+  * added curservmult config option (was hardcoded to 2.0 in v0.8)
+  * fixed a few documentation ommisions
+
+ -- Matt Mueller <donut@azstarnet.com>  Thu, 13 Apr 2000 22:49:22 -0700
+
 nget (0.8) unstable; urgency=low
 
   * nget version 0.8 released on 2000-04-12. (sorry about that wait.)
