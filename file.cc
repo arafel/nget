@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "sockstuff.h"
-#include "misc.h"
+#include "strreps.h"
 
 
 int c_file_buffy::resizebuf(int s){

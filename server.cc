@@ -17,6 +17,7 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 #include "server.h"
+#include "strreps.h"
 
 int parse_int_pair(const char *s, int *l, int *h){
 	const char *p;

@@ -22,6 +22,7 @@
 #include "lite.h"
 #include "litenntp.h"
 #include <string.h>
+#include "strreps.h"
 
 char *newstrcpy(char *&dest, const char *src){
 	int l;

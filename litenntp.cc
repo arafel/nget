@@ -26,6 +26,7 @@
 #include "sockstuff.h"
 #include <stdio.h>
 #include <unistd.h>
+#include "strreps.h"
 
 int c_prot_nntp::putline(int echo,const char * str,...){
 	va_list ap;

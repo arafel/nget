@@ -25,27 +25,8 @@
 
 #include <time.h>
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
 
-#ifdef HAVE_CONFIG_H
-#ifndef HAVE_ASPRINTF
-int asprintf(char **str,const char *format,...);
-#endif
-#ifndef HAVE_VASPRINTF
-#include <stdarg.h>
-int vasprintf(char **str,const char *format,va_list ap);
-#endif
-#ifndef HAVE_ATOUL
-inline ulong atoul(const char *str){return strtoul(str,NULL,10);}
-#endif
-
-#ifndef HAVE_STRERROR
-const char * strerror(int err);
-#endif
-#endif
 void init_my_timezone(void);//must be called before decode_(mdtm|textdate)
 
 int doopen(int &handle,const char * name,int access,int mode=0);

@@ -18,7 +18,7 @@
 */
 #include "myregex.h"
 #include "cache.h"
-#include "misc.h"
+#include "strreps.h"
 #include "log.h"
 #include SLIST_H
 #include <memory>

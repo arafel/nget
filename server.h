@@ -24,7 +24,6 @@
 #endif
 #include <map.h>
 #include "datfile.h"
-#include "misc.h"
 #include "rcount.h"
 
 int parse_int_pair(const char *s, int *l, int *h);

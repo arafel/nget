@@ -1,6 +1,6 @@
 /*
-    log.* - debug/error logging and exception defines
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    strreps.* - replacements for some string funcs that aren't always available
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,22 +16,33 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
-#include "log.h"
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "strreps.h"
 
-int quiet=0,debug=0;
-c_error::c_error(int n, const char * s, ...){
-	va_list ap;
-	num=n;
-	va_start(ap,s);
-	vasprintf(&str,s,ap);
-	va_end(ap);
-//	printf("c_error %i constructed: %s\n",num,str);
-}
-c_error::~c_error(){
-	if (str) free(str);
-	//printf("c_error %i deconstructed\n",num);
-};
+#ifndef _STRREPS_H_incd_
+#define _STRREPS_H_incd_
+
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+
+#ifndef HAVE_ASPRINTF
+int asprintf(char **str,const char *format,...);
+#endif
+
+#ifndef HAVE_VASPRINTF
+#include <stdarg.h>
+int vasprintf(char **str,const char *format,va_list ap);
+#endif
+
+#ifndef HAVE_ATOUL
+//inline ulong atoul(const char *str){return strtoul(str,NULL,10);}
+#define atoul(str) strtoul(str,NULL,10)
+#endif
+
+#ifndef HAVE_STRERROR
+const char * strerror(int err);
+#endif
+
+#endif //HAVE_CONFIG_H
+
+
+#endif

@@ -23,6 +23,7 @@
 #include "main.h"
 #endif
 #include "misc.h"
+#include "strreps.h"
 #include "log.h"
 
 #include <stdlib.h>
@@ -30,35 +31,11 @@
 #include <string.h>
 #include <utime.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include "myregex.h"
 
 #ifdef HAVE_CONFIG_H
-#ifndef HAVE_ASPRINTF
-#include <stdarg.h>
-int asprintf(char **str,const char *format,...){
-	int l;
-	va_list ap;
-
-	va_start(ap,format);
-	l=vasprintf(str,format,ap);
-	va_end(ap);
-	return l;
-}
-#endif
-#ifndef HAVE_VASPRINTF
-int vasprintf(char **str,const char *format,va_list ap){
-#ifndef _REENTRANT
-	static
-#endif
-		char buf[4096];
-	int l;
-	l=vsprintf(buf,format,ap);
-	*str=(char*)malloc(l+1);
-	memcpy(*str,buf,l+1);
-	return l;
-}
-#endif
-
 #ifndef HAVE_LOCALTIME_R
 struct tm * localtime_r(const time_t *t,struct tm * tmu){
 	struct tm *t1=localtime(t);
@@ -205,24 +182,6 @@ size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr, in
 	return strftime(timestr,max,formatstr,time_now);
 //	return timestr;
 }
-
-#ifdef HAVE_CONFIG_H
-#ifndef HAVE_STRERROR
-//extern int _sys_nerr;
-//extern const char *const _sys_errlist[];
-const char * strerror(int err){
-//	if (err>_sys_nerr)
-//	     return "max errno exceeded";
-//	else if (err<0)
-//	     return "min errno exceeded";
-//	else
-//	     return _sys_errlist[err];
-	static char buf[5];
-	sprintf(buf,"%i",err);
-	return buf;
-}
-#endif
-#endif
 
 char txt_exts[]=".txt.cpp.c.cc.h.pas.htm.html.pl.tcl";
 int is_text(const char * f){

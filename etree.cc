@@ -20,6 +20,7 @@
 #include "cache.h"
 #include "myregex.h"
 #include "misc.h"
+#include "strreps.h"
 
 template <class Op>
 struct e_generic : public e_unary_function<ubyte *, bool> {

@@ -38,6 +38,7 @@ extern "C" {
 #include <string.h>
 #include <time.h>
 #include "misc.h"
+#include "strreps.h"
 #include "sockstuff.h"
 #include "prot_nntp.h"
 #include "log.h"

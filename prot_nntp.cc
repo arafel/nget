@@ -35,6 +35,7 @@
 #endif
 
 #include "misc.h"
+#include "strreps.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>

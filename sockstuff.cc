@@ -40,7 +40,7 @@
 #ifdef WRFTP
 #include "main.h"
 #endif
-//#include "misc.h"
+#include "strreps.h"
 
 int sock_timeout=3*60;
 //int sock_timeout=10;
