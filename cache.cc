@@ -1,11 +1,19 @@
-#include "cache.h"
+#ifdef HAVE_CONFIG_H 
 #include "config.h"
+#endif
+#include "cache.h"
 #include "misc.h"
 #include "myregex.h"
 #include "log.h"
+#include <glob.h>
+#ifdef HAVE_SLIST_H
+#include <slist.h>
+#endif
+//#include <fnmatch.h>
+
 
 #ifdef TEXT_CACHE
-c_nntp_cache_item* c_nntp_cache_item::load(char *s){
+c_nntp_cache_item* c_nntp_cache_item::loadi(char *s){
 	char *t[6], *p;
 	int i;
 	p=s;
@@ -20,7 +28,7 @@ c_nntp_cache_item* c_nntp_cache_item::load(char *s){
 	return c;
 };
 #else
-c_nntp_cache_item* c_nntp_cache_item::load(long l1, c_file *f, char *buf){
+c_nntp_cache_item* c_nntp_cache_item::loadi(long l1, c_file *f, char *buf){
 	long l[4];
 	if (f->read(l,sizeof(long)*4)<=0)return NULL;
 	if (f->read(buf,l[3])<=0)return NULL;
@@ -36,11 +44,27 @@ c_nntp_cache_item* c_nntp_cache_item::load(long l1, c_file *f, char *buf){
 }
 #endif
 
+#ifdef DEBUG_CACHE_DESTRUCTION
+static int dbgcount5=0;
+#endif
+
 c_nntp_cache_item::c_nntp_cache_item(long n,time_t d,long s, long l, char * a,char * e):subject(a), email(e){
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount5++;
+	printf("c_nntp_cache_item::c_nntp_cache_item dbgcount=%i\n",dbgcount5);
+#endif
 	num=n;date=d;size=s;lines=l;
 //	printf("new c_nntp_cache_item(%li,%li,%li,%li,%s,%s\n",n,d,s,l,a,e);
-};
-int c_nntp_cache_item::store(c_file *f){
+}
+c_nntp_cache_item::~c_nntp_cache_item(){
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount5--;
+//	subject.delete_c_str();email.delete_c_str();
+	printf("c_nntp_cache_item::~c_nntp_cache_item dbgcount=%i\n",dbgcount5);
+#endif
+}
+
+int c_nntp_cache_item::storei(c_file *f){
 #ifdef TEXT_CACHE
 	return f->putf("%li\t%li\t%li\t%li\t%s\t%s\n",num,date,size,lines,subject.c_str(),email.c_str());
 #else
@@ -59,7 +83,7 @@ int c_nntp_cache_item::store(c_file *f){
 };
 
 #ifdef TEXT_CACHE
-int c_nntp_file::load(char *str,t_cache_items *itp){
+int c_nntp_file::loadf(char *str,t_cache_items *itp){
 	char *s,*s2,*s3;
 	if (!(s=strchr(str,'\t')))
 		return -1;
@@ -86,7 +110,7 @@ int c_nntp_file::load(char *str,t_cache_items *itp){
 	return 0;
 }
 #else
-int c_nntp_file::load(c_file *f,t_cache_items *itp){
+int c_nntp_file::loadf(c_file *f,t_cache_items *itp){
 	s_part *p=new s_part;
 	long num;
 	if(f->read(&p->partnum,sizeof(p->partnum))<=0)return -1;
@@ -107,7 +131,7 @@ int c_nntp_file::load(c_file *f,t_cache_items *itp){
 	return 0;
 }
 #endif
-int c_nntp_file::store(c_file *f){
+int c_nntp_file::storef(c_file *f){
 #ifdef TEXT_CACHE
 	f->putf("%i\t%i\n",req,have);
 #else
@@ -133,7 +157,16 @@ int c_nntp_file::store(c_file *f){
 #endif
 	return 0;
 };
+
+
+#ifdef DEBUG_CACHE_DESTRUCTION
+static int dbgcount3=0;
+#endif
 c_nntp_file::c_nntp_file(c_nntp_file &f):req(f.req){
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount3++;
+	printf("c_nntp_file::c_nntp_file dbgcount=%i\n",dbgcount3);
+#endif
 	t_nntp_file_parts::iterator curf;
 	s_part *p;
 	have=0;bytes=0;lines=0;
@@ -144,21 +177,66 @@ c_nntp_file::c_nntp_file(c_nntp_file &f):req(f.req){
 	}
 }
 c_nntp_file::c_nntp_file(){
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount3++;
+	printf("c_nntp_file::c_nntp_file dbgcount=%i\n",dbgcount3);
+#endif
 	have=0;bytes=0;lines=0;
 }
 c_nntp_file::~c_nntp_file(){
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount3--;
+	printf("c_nntp_file::~c_nntp_file dbgcount=%i\n",dbgcount3);
+#endif
 	t_nntp_file_parts::iterator curf;
 	for(curf = parts.begin();curf!=parts.end();++curf){
 		delete (*curf).second;
 	}
 }
+
 void c_nntp_file::addpart(s_part * p){
 	parts[p->partnum]=p;
 	if (p->partnum>0 && p->partnum<=req) have++;
 	bytes+=p->i->size;
 	lines+=p->i->lines;
 }
-int s_part::parseitem(c_nntp_cache_item *ni){
+
+c_nntp_file_u::c_nntp_file_u(c_nntp_file &f,const char *fn):req(f.req){
+	t_nntp_file_parts::iterator curf;
+	s_part_u *p;
+	if (fn)
+		filename=fn;
+	else{
+		s_part *q=(*f.parts.begin()).second;
+		if (q->partoff>3)
+			filename=q->i->subject.substr(0,q->partoff-1);
+		else
+			filename=q->i->subject;
+	}
+	have=f.have;bytes=f.bytes;lines=f.lines;
+	banum=(*f.parts.begin()).second->i->num;
+	for(curf = f.parts.begin();curf!=f.parts.end();++curf){
+		p=new s_part_u(*(*curf).second);
+		parts[p->partnum]=p;
+	}
+}
+c_nntp_file_u::c_nntp_file_u(){
+	have=0;bytes=0;lines=0;
+}
+c_nntp_file_u::~c_nntp_file_u(){
+	t_nntp_file_u_parts::iterator curf;
+	for(curf = parts.begin();curf!=parts.end();++curf){
+		delete (*curf).second;
+	}
+}
+
+s_part_u::s_part_u (s_part &p){
+	partnum=p.partnum;
+	anum=p.i->num;
+	size=p.i->size;
+	lines=p.i->lines;
+}
+/*int s_part::parseitem(c_nntp_cache_item *ni){
 	const char *str=ni->subject.c_str();
 	char *s=strrchr(str,'/');
 	partoff=-1;tailoff=-1;
@@ -185,18 +263,79 @@ int s_part::parseitem(c_nntp_cache_item *ni){
 	}
 	
 	return req;
+}*/
+
+int s_part::parsepnum(const char *str,const char *soff){
+	const char *p;
+	if ((p=strpbrk(soff+1,")]"))){
+		char m,m2=*p;
+		if (m2==')') m='(';
+		else m='[';
+		tailoff=p-str;
+		for(p=soff;p>str;p--)
+			if (*p==m){
+				char *erp;
+				partoff=p-str;
+				partnum=strtol(p+1,&erp,10);
+				if (*erp!='/' || erp==p+1) return -1;
+				int req=strtol(soff+1,&erp,10);
+				if (*erp!=m2 || erp==soff+1) return -1;
+				//					if (partnum==0)
+				//						partnum=-1;
+				return req;
+			}
+	}
+	return -1;
 }
-c_nntp_file_cache::c_nntp_file_cache(){};//:freg("[[(]([0-9]+)/([0-9]+)[])]"){};
+int s_part::parseitem(c_nntp_cache_item *ni){
+	const char *str=ni->subject.c_str();
+//	char *s=strrchr(str,'/');
+	const char *s=str+ni->subject.size()-3;//-1 for null, -2 for ), -3 for num
+	int req=0;
+	i=ni;
+	for (;s>str;s--) {
+		if (*s=='/')
+			if ((req=parsepnum(str,s))>=0)return req;
+	}
+	partoff=-1;tailoff=-1;
+	partnum=0;
+	
+	return 0;
+}
+
+c_nntp_file_cache_u::c_nntp_file_cache_u(){lines=0;bytes=0;};//:freg("[[(]([0-9]+)/([0-9]+)[])]"){};
+c_nntp_file_cache_u::~c_nntp_file_cache_u(){
+	t_nntp_files_u::iterator curf;
+	for(curf = files.begin();curf!=files.end();++curf){
+		delete (*curf).second;
+	}
+}
+
+
+#ifdef DEBUG_CACHE_DESTRUCTION
+static int dbgcount2=0;
+#endif
+c_nntp_file_cache::c_nntp_file_cache(){
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount2++;
+	printf("c_nntp_file_cache::c_nntp_file_cache dbgcount=%i\n",dbgcount2);
+#endif
+}//:freg("[[(]([0-9]+)/([0-9]+)[])]"){};
 c_nntp_file_cache::~c_nntp_file_cache(){
 	t_nntp_files::iterator curf;
 	for(curf = files.begin();curf!=files.end();++curf){
 		delete (*curf);
 	}
+	//files.erase(files.begin(),files.end());
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount2--;
+	printf("c_nntp_file_cache::~c_nntp_file_cache dbgcount=%i\n",dbgcount2);
+#endif
 }
 int c_nntp_file_cache::store(c_file *f){
 	t_nntp_files::iterator curf;
 	for(curf = files.begin();curf!=files.end();++curf){
-		(*curf)->store(f);
+		(*curf)->storef(f);
 	}
 	return 0;
 }
@@ -284,7 +423,7 @@ void c_nntp_file_cache::check_consistancy(t_cache_items *itp){
 			p=(*curp).second;
 			i=p->i;
 			if (p->partnum>f->req)
-				printf("c_nntp_file_cache: partnum %li>%i\n",p->partnum,f->req);
+				printf("c_nntp_file_cache: partnum %li>%i : %s\n",p->partnum,f->req,i->subject.c_str());
 			count[i->num]++;
 			if (count[i->num]==1)
 				tpu++;
@@ -321,7 +460,7 @@ void c_nntp_file_cache::additem(c_nntp_cache_item* i){
 			nf=(*curf);
 			if (nf->parts.find(p->partnum)!=nf->parts.end())
 				continue;
-			tp=nf->parts.begin()->second;
+			tp=(*nf->parts.begin()).second;
 			if (req==nf->req && tp->i->email==i->email && p->partoff==tp->partoff && strncmp(i->subject.c_str(),tp->i->subject.c_str(),p->partoff)==0){
 //				nf->parts[p->partnum]=p;
 //				nf->have++;
@@ -375,33 +514,137 @@ void c_nntp_file_cache::additem(c_nntp_cache_item* i){
 	}
 	return fc;
 }*/
+class file_match {
+	public:
+		c_regex reg;
+		long size;
+		file_match(const char *m,int a):reg(m,a){};
+};
+typedef slist<file_match *> filematchlist;
+//typedef slist<char *> filematchlist;
+typedef slist<long> longlist;
+
+#define ALNUM "a-zA-Z0-9"
+void buildflist(filematchlist **l,longlist **a){
+	glob_t globbuf;
+	globbuf.gl_offs = 0;
+	glob("*",0,NULL,&globbuf);
+	*l=NULL;
+	*a=NULL;
+	if (globbuf.gl_pathc<=0)return;
+	*l=new filematchlist;
+//	char *s;
+	struct stat stbuf;
+//	c_regex *s;
+	file_match *fm;
+	c_regex amatch("^[0-9]+\\.txt",REG_EXTENDED|REG_ICASE|REG_NOSUB);
+	char buf[1024];
+	for (int i=0;i<globbuf.gl_pathc;i++){
+/*		asprintf(&s,"*[!"ALNUM"]%s[!"ALNUM"]*",globbuf.gl_pathv[i]);
+		(*l)->push_front(s);
+		asprintf(&s,"*[!"ALNUM"]%s",globbuf.gl_pathv[i]);
+		(*l)->push_front(s);
+		asprintf(&s,"%s[!"ALNUM"]*",globbuf.gl_pathv[i]);*/
+		//no point in using fnmatch.. need to do this gross multi string per file kludge, and...
+		//sprintf(buf,"(^|[^[:alnum:]]+)%s([^[:alnum:]]+|$)",globbuf.gl_pathv[i]);//this is about the same speed as the 3 fnmatchs
+		sprintf(buf,"\\<%s\\>",globbuf.gl_pathv[i]);//this is much faster
+//		s=new c_regex(buf,REG_EXTENDED|REG_ICASE|REG_NOSUB);
+		fm=new file_match(buf,REG_EXTENDED|REG_ICASE|REG_NOSUB);
+		if(stat(globbuf.gl_pathv[i],&stbuf)==0)
+			fm->size=stbuf.st_size;
+		else
+			fm->size=0;
+		(*l)->push_front(fm);
+		if (!amatch.match(globbuf.gl_pathv[i])){
+			if (*a==NULL)
+				*a=new longlist;
+			(*a)->push_front(atol(globbuf.gl_pathv[i]));
+		}
+	}
+	globfree(&globbuf);
+//	return l;
+}
+
+//gnu extension.. if its not available, just compare normally.
+//#ifndef FNM_CASEFOLD
+//#define FNM_CASEFOLD 0
+//#endif
+
+int checkhavefile(filematchlist *fl,longlist *al,const char *f,long anum,long bytes){
+	filematchlist::iterator curl;
+	longlist::iterator cura;
+	if (al)
+		for (cura=al->begin();cura!=al->end();++cura){
+			if (*cura==anum){
+				printf("already have %s\n",f);
+				return 1;
+			}
+		}
+	if (fl){
+		file_match *fm;
+		for (curl=fl->begin();curl!=fl->end();++curl){
+			//		printf("fnmatch(%s,%s,%i)=",*curl,f,FNM_CASEFOLD);
+//			if (fnmatch(*curl,f,FNM_CASEFOLD)==0){
+			fm=*curl;
+			if (fm->reg.match(f)==0 && fm->size*2>bytes && fm->size<bytes){
+				//			printf("0\n");
+				printf("already have %s\n",f);
+				return 1;
+			}
+			//		printf("1\n");
+		}
+	}
+	return 0;
+}
+
 //new method, initializes the cache once, then searches that
-c_nntp_file_cache * c_cache::getfiles(const char *match, int linelimit,int flags){
+c_nntp_file_cache_u * c_cache::getfiles(c_nntp_file_cache_u * fc,const char *match, int linelimit,int flags){
 	//,int getincomplete, int casesensitive){
-	int nm=0;
-	c_nntp_file_cache *fc=new c_nntp_file_cache;
+	//int nm=0;
+//	c_nntp_file_cache *fc=new c_nntp_file_cache;
+	if (fc==NULL) fc=new c_nntp_file_cache_u;
 	c_regex hreg(match,REG_EXTENDED + ((flags&GETFILES_CASESENSITIVE)?0:REG_ICASE));
 
 	if (!files) throw new c_error(EX_A_FATAL,"no file cache??");
 
+	filematchlist *flist=NULL;
+	longlist *alist=NULL;
+	if (!(flags&GETFILES_NODUPECHECK))
+		buildflist(&flist,&alist);
 	t_nntp_files::iterator cur;
-	c_nntp_file *f,*nf;
+	c_nntp_file *f;
+	c_nntp_file_u *nf;
 	c_nntp_cache_item *i;
 	for(cur = files->files.begin();cur!=files->files.end();++cur){
 		f=(*cur);
-		i=f->parts.begin()->second->i;
+		i=(*f->parts.begin()).second->i;
 		if (f->lines>=linelimit && (f->have>=f->req || flags&GETFILES_GETINCOMPLETE) && !hreg.match(i->subject.c_str())){//matches user spec
 //			fc->additem(i);
-			nf=new c_nntp_file(*f);
-			fc->files.push_front(nf);
-			nm++;
+			if (fc->files.find(i->num)!=fc->files.end())
+				continue;
+			if (!(flags&GETFILES_NODUPECHECK) && checkhavefile(flist,alist,i->subject.c_str(),i->num,f->bytes))
+				continue;
+			nf=new c_nntp_file_u(*f,NULL);
+			//fc->files.push_front(nf);
+			//fc->files.insert(nf->parts.begin()->second->anum)=nf;
+			fc->files[nf->banum]=nf;
+			fc->lines+=nf->lines;
+			fc->bytes+=nf->bytes;
+//			nm++;
 //			if (!freg.match(i->subject.c_str()+hreg.subeo(0))){//has part nums
 //			}
 		}
 	}
-	if (!nm){
-		delete fc;fc=NULL;
+	if (flist){
+		filematchlist::iterator curl;
+		for (curl=flist->begin();curl!=flist->end();++curl)
+			delete *curl;
+		delete flist;
 	}
+	if (alist)delete alist;
+//	if (!nm){
+//		delete fc;fc=NULL;
+//	}
 	return fc;
 }
 void c_cache::additem(c_nntp_cache_item* i, int do_file_cache){
@@ -454,14 +697,27 @@ void c_cache::check_consistancy(const char *s){
 }
 #endif
 
+#ifdef DEBUG_CACHE_DESTRUCTION
+static int dbgcount1=0;
+#endif
 c_cache::c_cache(string path,string hid,string nid):file(path),high(0),low(INT_MAX){
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount1++;
+	printf("c_cache::c_cache dbgcount=%i\n",dbgcount1);
+#endif
 #ifdef HAVE_LIBZ
 	c_file_gz f;
 #else
 	c_file_stream f;
 #endif
 	int mode=0;
+#ifdef TEXT_CACHE
+	f.initrbuf(2048);
+	//f.initrbuf(256);
+	char *buf;
+#else
 	char buf[2048];
+#endif
 	saveit=0;//if we are interupted during the loading process, we wouldn't want to overwrite the full file with only the part we have read.
 	c_nntp_cache_item*i;
 	testmkdir(file.c_str(),S_IRWXU);
@@ -469,6 +725,9 @@ c_cache::c_cache(string path,string hid,string nid):file(path),high(0),low(INT_M
 	testmkdir(file.c_str(),S_IRWXU);
 	file.append("/");
 	file.append(nid);
+#ifndef TEXT_CACHE
+	file.append("_b");
+#endif
 #ifdef HAVE_LIBZ
 	file.append(".gz");
 #endif
@@ -477,25 +736,32 @@ c_cache::c_cache(string path,string hid,string nid):file(path),high(0),low(INT_M
 	if (!f.open(file.c_str(),"r")){
 		fileread=1;
 #ifdef TEXT_CACHE
-		c_nntp_file *p=NULL;
-		while (f.gets(buf,2048)){
+		c_nntp_file *fp=NULL;
+		while (f.bgets()>0){
+		//while (f.gets(buf,2048)){
+			buf=f.rbufp;
 			if(buf[0]=='.'){
 				mode=1;
 				continue;
 			}
 			switch (mode){
 				case 0:
-					if((i=c_nntp_cache_item::load(buf))){
+					if((i=c_nntp_cache_item::loadi(buf))){
 						additem(i,0);
-					}
+					}else
+						printf("read invalid cache line(mode %i): %s\n",mode,buf);
 					break;
 				case 1:
-					if ((p=files->load(buf)))
+					if ((fp=files->load(buf)))
 						mode=2;
+					else
+						printf("read invalid cache line(mode %i): %s\n",mode,buf);
 					break;
 				case 2:
-					if(p)
-						p->load(buf,&items);
+					if(fp){
+						if (fp->loadf(buf,&items))
+							printf("read invalid cache line(mode %i): %s\n",mode,buf);
+					}
 					break;
 				default:
 					break;
@@ -512,7 +778,7 @@ c_cache::c_cache(string path,string hid,string nid):file(path),high(0),low(INT_M
 			}
 			switch (mode){
 				case 0:
-					if((i=c_nntp_cache_item::load(blag,&f,buf))){
+					if((i=c_nntp_cache_item::loadi(blag,&f,buf))){
 						additem(i,0);
 					}
 					break;
@@ -535,6 +801,9 @@ c_cache::c_cache(string path,string hid,string nid):file(path),high(0),low(INT_M
 		check_consistancy("c_cache");
 #endif
 	}
+#ifdef DEBUG_CACHE
+		else printf("couldn't open %s: %s\n",file.c_str(),strerror(errno));
+#endif
 //	saveit=1;//actually, we should only save it again if its changed..
 };
 c_cache::~c_cache(){
@@ -560,7 +829,7 @@ c_cache::~c_cache(){
 			if (!i){
 				printf("item %li == NULL?\n",(*cur).first);continue;
 			}
-			i->store(&f);
+			i->storei(&f);
 			//	delete i;
 		}
 #ifdef TEXT_CACHE
@@ -580,6 +849,21 @@ c_cache::~c_cache(){
 		i=(*cur).second;
 		delete i;
 	}
+//	items.erase(items.begin(),items.end());
 	//	}
 	if (files) delete files;
+#ifdef DEBUG_CACHE_DESTRUCTION
+	dbgcount1--;
+//	printf("c_cache::c_cache dbgcount=%i\n",dbgcount1);
+	cache_dbginfo();
+#endif
 };
+
+#ifdef DEBUG_CACHE_DESTRUCTION
+void cache_dbginfo(void){
+	printf("--\nc_cache::c_cache dbgcount=%i\n",dbgcount1);
+	printf("c_nntp_file_cache::c_nntp_file_cache dbgcount=%i\n",dbgcount2);
+	printf("c_nntp_file::c_nntp_file dbgcount=%i\n",dbgcount3);
+	printf("c_nntp_cache_item::c_nntp_cache_item dbgcount=%i\n",dbgcount5);
+}
+#endif

@@ -1,5 +1,12 @@
+#ifdef HAVE_CONFIG_H 
+#include "config.h"
+#endif
 #include "file.h"
 #include <stdarg.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include "sockstuff.h"
 
 //c_buffer::c_buffer(void){
 //	buf=NULL;bufsize=0;bufused=0;bufdef=0;bufstep=4096;bufhigh=0;
@@ -48,9 +55,14 @@ c_file::c_file(void){
 //#ifdef HAVE_LIBZ
 //	gzh=NULL;
 //#endif 
+	rbuf=NULL;
+	rbufsize=0;
+	rbufstate=0;
+	resetrbuf();
 }
 
 c_file::~c_file(){
+	if (rbuf)free(rbuf);
 //	close();//cant call it here, since doclose is already gone
 }
 
@@ -107,7 +119,99 @@ int c_file::close(void){
 		flush(1);
 		return doclose();
 	}
+	resetrbuf();rbufstate=0;
 	return 0;
+}
+unsigned int c_file::initrbuf(unsigned int s){
+	int p=rbufp-rbuf;
+	if (s<rbufused)
+		s=rbufused;
+	if ((rbuf=(char*)realloc(rbuf,s))){//If ptr is NULL, equivalent to malloc()
+		rbufp=rbuf+p;
+		rbufsize=s;
+	}
+	return rbufsize;
+};
+size_t c_file::bread(size_t len){
+	if (len>rbufsize)len=rbufsize;
+	size_t temp=doread(rbuf+rbufused,len-rbufused)+rbufused-rbufoff;
+	rbufp=rbuf+rbufoff;
+	resetrbuf();rbufstate=0;
+	return temp;
+}
+int c_file::bgets_sub(void){
+//	int rbufstate=0;//state needs to be persistant, in order to compensate for a buffer that ends with \r, but the next
+	//char happens to be \n.  This would previously return an erroneous blank line.
+	unsigned int i;
+	int istate=rbufstate;
+	if (rbufstate==2)rbufstate=0;
+//	else if (rbufstate==3)rbufstate=4;
+	for (i=rbufoff;i<rbufused;i++){
+		if (rbufstate==0 && rbuf[i]=='\r'){
+			rbuf[i]=0;rbufstate=1;rbufoff=i+1;
+		}
+		else if (rbuf[i]=='\n'){
+			rbuf[i]=0;rbufoff=i+1;
+			if (rbufstate<3){
+				rbufstate=2;break;
+			}else{
+				rbufstate=0;
+				//rbufofp++;
+				rbufp++;
+			}
+		}else if(rbufstate){//line is \r terminated only. odd, but ok.
+			if (rbufstate>=3)
+				rbufstate=0;
+			else{
+				rbufstate=2;
+				break;
+			}
+		}
+	}
+	if (rbufstate==0)
+		rbufoff=i;
+	else if (rbufstate==1)
+		rbufstate=3;
+	else if (istate==3 &&rbufstate==3)//if there were no chars in the buffer, don't return that we have another line
+		rbufstate=4;
+//	else
+//		if(rbufignorenext)rbufstate=0;
+	return (rbufstate>0 && rbufstate<4);
+}
+int c_file::bgets(void){
+	//unsigned int rbos=rbufoff;
+	rbufofp=rbufoff;
+	rbufp=rbuf+rbufoff;
+	size_t t;
+	while (!bgets_sub()){
+		if (rbufused<rbufsize-1){
+			if ((t=doread(rbuf+rbufused,rbufsize-rbufused-1))<=0){
+				if(rbufofp<rbufused){//if we have some chars still, return em.
+					rbuf[rbufused]=0;
+					break;
+				}
+//				return NULL;//otherwise, signal an error.
+				return -1;
+			}
+			rbufused+=t;
+		}else{
+			if (rbufofp>0){//we are at the end, but have some empty space at the start.. use it.
+				memmove(rbuf,rbufp,rbufsize-rbufofp);
+				rbufp=rbuf;
+				rbufused-=rbufofp;
+				rbufoff-=rbufofp;
+				rbufofp=0;
+			}else{
+				rbuf[rbufused]=0;//welp, looks like we got to the end of the buffer, but not the end of the line.  oh well.
+//				rbufignorenext=1;
+				break;
+			}
+		}
+	}
+	int l=rbufoff-rbufofp;
+	if (rbufoff>=rbufused)
+		resetrbuf();
+	return l;
 }
 
 #ifdef HAVE_LIBZ
@@ -126,11 +230,11 @@ int c_file_gz::doclose(void){
 	gzh=NULL;
 	return i;
 }
-int c_file_gz::isopen(void){
+inline int c_file_gz::isopen(void){
 	return (gzh!=0);
 }
 inline size_t c_file_gz::dowrite(const void *data,size_t len){
-	return gzwrite(gzh,data,len);
+	return gzwrite(gzh,(void*)data,len);
 }
 inline size_t c_file_gz::doread(void *data,size_t len){
 	return gzread(gzh,data,len);
@@ -138,13 +242,8 @@ inline size_t c_file_gz::doread(void *data,size_t len){
 inline char * c_file_gz::dogets(char *data,size_t len){
 	return gzgets(gzh,data,len);
 }
-//int c_file_optgz::open(const char *name,const char * mode,int gz){
-//	return (!(gzh=gzopen(name,mode)));
-//}
 #endif
 
-//size_t c_file_stream::dowrite(void *buf,size_t len);
-//size_t c_file_stream::doread(void *buf,size_t len);
 int c_file_stream::open(const char *name,const char * mode){
 	close();
 	return (!(fs=fopen(name,mode)));
@@ -160,7 +259,7 @@ int c_file_stream::doclose(void){
 	fs=NULL;
 	return i;
 }
-int c_file_stream::isopen(void){
+inline int c_file_stream::isopen(void){
 	return (fs!=0);
 }
 inline size_t c_file_stream::dowrite(const void *data,size_t len){
@@ -172,4 +271,44 @@ inline size_t c_file_stream::doread(void *data,size_t len){
 inline char * c_file_stream::dogets(char *data,size_t len){
 	return fgets(data,len,fs);
 }
-//int c_file_optgz::open(const char *name,const char * mode,int gz){
+
+
+int c_file_tcp::open(const char *host,const char * port){
+	close();
+//	return (!(fs=fopen(name,mode)));
+	if (rbuf && rbufsize>512){
+		sock=make_connection(port,SOCK_STREAM,host,NULL,rbuf,rbufsize);
+	}
+	else{
+		char buf[512];
+		sock=make_connection(port,SOCK_STREAM,host,NULL,buf,512);
+	}
+	if (sock<0)return sock;
+	else return 0;
+}
+int c_file_tcp::doflush(void){
+	if (sock>=0)
+	     return fsync(sock);
+	return 0;
+}
+int c_file_tcp::doclose(void){
+	int i=0;
+	i=::close(sock);
+	sock=-1;
+	return i;
+}
+inline int c_file_tcp::isopen(void){
+	return (sock>=0);
+}
+inline size_t c_file_tcp::dowrite(const void *data,size_t len){
+	return sock_write(sock,(char*)data,len);
+}
+inline size_t c_file_tcp::doread(void *data,size_t len){
+	return sock_read(sock,data,len);
+}
+inline char * c_file_tcp::dogets(char *data,size_t len){
+	int i=sock_gets(sock,data,len);
+	if (i<=0)return NULL;
+	return data;
+	//return sock_gets(sock,data,len);
+}

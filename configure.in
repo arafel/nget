@@ -1,0 +1,80 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(nget.cc)
+AC_CONFIG_HEADER(config.h)    
+
+AC_LANG_CPLUSPLUS
+
+dnl Checks for programs.
+AC_PROG_CXX
+AC_PROG_INSTALL
+dnl AC_PROG_MAKE_SET
+
+dnl Checks for libraries.
+dnl Replace `main' with a function in -lz:
+usez=yes
+AC_ARG_WITH(zlib,
+[ --without-zlib          Don't use zlib.  Faster loading/quiting, but uses
+                          much more space],
+	if test "$withval" = "no"; then
+		usez=no
+	fi
+)
+if test "$usez" = "yes"; then
+	AC_CHECK_LIB(z, gzopen)
+fi
+uumanual=no
+AC_ARG_WITH(uulib,
+[ --with-uulib=UULIBDIR    specify dir containing uulib headers and libuu.a],
+	if test "$withval" != "no"; then
+		UUDIR=-I$withval
+		UULIB=$withval/libuu.a
+		AC_DEFINE(HAVE_LIBUU)
+	fi
+	uumanual=yes
+)
+AC_SUBST(UUDIR)
+AC_SUBST(UULIB)
+if test "$uumanual" != "yes"; then
+	AC_CHECK_LIB(uu, UUInitialize)
+fi
+
+AC_ARG_ENABLE(debug_cache,
+[ --enable-debug_cache     Enable consistancy checks when loading and saving header cache],
+	if test "$enableval" != "no"; then
+		AC_DEFINE(DEBUG_CACHE)
+	fi
+)
+AC_ARG_ENABLE(text_cache,
+[ --disable-text_cache     Use binary header cache instead of text (slightly 
+                           smaller and slower)],
+	if test "$enableval" != "no"; then
+		AC_DEFINE(TEXT_CACHE)
+	fi
+,
+		AC_DEFINE(TEXT_CACHE)
+)
+
+dnl Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h getopt.h slist.h)
+
+dnl checks for socklen_t
+SOCK_CHECK_TYPE(socklen_t, int)
+
+dnl see if timezone is an int
+MY_DECL_TIMEZONE
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_STRUCT_TM
+
+dnl Checks for library functions.
+AC_TYPE_SIGNAL
+AC_FUNC_STRFTIME
+AC_FUNC_UTIME_NULL
+dnl AC_FUNC_VPRINTF
+AC_CHECK_FUNCS(mkdir mktime regcomp select socket strerror strstr strtol asprintf vasprintf vdprintf getservbyname_r gethostbyname_r localtime_r getopt_long)
+
+AC_OUTPUT(Makefile,[echo timestamp > stamp-h])

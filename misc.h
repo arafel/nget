@@ -1,5 +1,8 @@
 #ifndef _MISC_H_
 #define _MISC_H_
+#ifdef HAVE_CONFIG_H 
+#include "config.h"
+#endif
 //misc.h
 
 #include <time.h>
@@ -8,6 +11,10 @@
 #include <fcntl.h>
 #include <stdio.h>
 
+#ifndef HAVE_STRERROR
+const char * strerror(int err);
+#endif
+void init_my_timezone(void);
 
 int doopen(int &handle,const char * name,int access,int mode=0);
 int dofopen(FILE * &f,const char * name,const char * mode,int domiscquiet=0);
@@ -23,7 +30,6 @@ int do_utime(const char *f,time_t t);
 
 size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%m-%d-%y %H:%M", int local=1);
 
-const char * errtoa(int err);
 
 char * goodstrtok(char **cur, char sep);
 

@@ -1,4 +1,4 @@
-.TH nget 1 "06 Jun 1999"
+.TH nget 1 "12 Jun 1999"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -10,13 +10,15 @@ contained within.  Multipart messages are automatically pieced together.
 .SH EXAMPLES
 get listing of all files matching penguin*.png from alt.binaries.pictures.linux:
 .br
-.B nget -g alt.binaries.pictures.linux -R "penguin.*png"
+.B nget -g alt.binaries.pictures.linux -DTr "penguin.*png"
 .P
 retrieve all the ones that have more than 50 lines:
 .br
 .B nget -g alt.binaries.pictures.linux -l 50 -r "penguin.*png"
 
 .SH BUGS
+There should be some quotes in those above examples, but I'm no man page guru.
+.P
 In multi part messages, part 0/x is usually a description.. this will be saved.
 But sometimes the description will be in 1/x, in which case it is not saved.
 This would either need modification of libuu, or some ugly hacks.  I'll look
@@ -25,6 +27,13 @@ into it in a later version.
 This man page doesn't list many of the options, see
 .B nget --help
 for the full list.
+.P
+Memory usage on large newsgroups seems a bit extreme.  I don't quite know why.
+I free all headers before doing the article retrieving, so it should use
+practically no memory at that point. (except for the download buffer).  I'd
+guess its a memory leak, but I can't find any code flaws, and it doesn't get
+worse if you do multiple loads/frees of the header data.  Perhaps its some STL
+thing.  Oh well.
 .SH AUTHOR
 Matt Mueller <donut@azstarnet.com>
 .P
@@ -40,3 +49,5 @@ is supposedly posted monthly on comp.unix.programmer.
 .P
 Beej's Guide to Network Programming at
 http://www.ecst.csuchico.edu/~beej/guide/net/
+.P
+Jean-loup Gailly and Mark Adler, for the zlib library.

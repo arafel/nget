@@ -1,6 +1,26 @@
-nget Changelog
+nget (0.3) unstable; urgency=low
 
-06/07/1999 - 0.2 
-		uses select() on reads.. no more infinate waits when disconnected
+  * doesn't download files you already have.. kinda rudementary, could easily
+    cause problems if you have a file like "a" in the dir..
+  * c_file now has buffered gets() capability, which not only is far faster
+    than gzgets(), it is even faster than the gz'd binary cache.
+  * Changed prot_nntp to use c_file_tcp, with the new bgets(), reducing cpu
+    usage significantly (while retrieving articles: 3.0% to <0.1%)
 
-06/06/1999 - 0.1 - initial release
+ -- Matt Mueller <donut@azstarnet.com>  Wed,  9 Jun 1999 01:46:26 -0700
+
+nget (0.2) unstable; urgency=low
+
+  * uses select() on reads.. no more infinate waits when disconnected
+
+ -- Matt Mueller <donut@azstarnet.com>  Wed,  7 Jun 1999 02:04:05 -0700
+
+nget (0.1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Matt Mueller <donut@azstarnet.com>  Mon,  6 Jun 1999 20:14:06 -0700
+
+Local variables:
+mode: debian-changelog
+End:

@@ -1,6 +1,8 @@
 #ifndef _FILE_H_
 #define _FILE_H_
+#ifdef HAVE_CONFIG_H 
 #include "config.h"
+#endif
 //#include <unistd.h>
 #include <stdio.h>
 
@@ -33,20 +35,35 @@ class c_file {
 //#ifdef HAVE_LIBZ
 //	gzFile gzh;
 //#endif 
+	
 	virtual char * dogets(char *data,size_t len)=0;
 	virtual size_t dowrite(const void *data,size_t len)=0;
 	virtual size_t doread(void *data,size_t len)=0;
 //	virtual int doopen(const char *name,const char * mode)=0;
 	virtual int doflush(void)=0;
 	virtual int doclose(void)=0;
-
+	int bgets_sub(void);
+	void resetrbuf(void){rbufused=0;rbufoff=0;};//rbufstate=0;};//rbufignorenext=0;};
+  protected:
+	unsigned int rbufsize,rbufused,rbufofp,rbufoff;//,rbufignorenext;
+	int rbufstate;
+	char *rbuf;
+	
   public:
+	char *rbufp;
+	
 	c_file(void);
 	virtual ~c_file();
-	size_t putf(const char *buf,...);
+	size_t putf(const char *buf,...)
+        __attribute__ ((format (printf, 2, 3)));
 	char * gets(char *buf,size_t len);
 	size_t write(const void *buf,size_t len);
 	size_t read(void *buf,size_t len);
+	//buffered funcs: must call initrbuf first.
+	size_t bread(size_t len);//buffered read, must be used instead of normal read, if you are using bgets
+	//char * bgets(void);//buffered gets, should be faster than normal gets, definatly for tcp or gz. maybe not for stream.
+	int bgets(void);//buffered gets, should be faster than normal gets, definatly for tcp or gz. maybe not for stream.
+	unsigned int initrbuf(unsigned int s);
 //	int open(const char *name,const char * mode);
 	int flush(int local=0);
 	int close(void);
@@ -69,6 +86,21 @@ class c_file_stream : public c_file {
 	c_file_stream(void){fs=NULL;};
 	~c_file_stream(){close();};
 };
+class c_file_tcp : public c_file {
+  private:
+	int sock;
+	
+	virtual char * dogets(char *data,size_t len);
+	virtual size_t dowrite(const void *buf,size_t len);
+	virtual size_t doread(void *buf,size_t len);
+	virtual int doflush(void);
+	virtual int doclose(void);
+  public:
+	virtual int isopen(void);	
+	int open(const char *name,const char * mode);
+	c_file_tcp(void){sock=-1;};
+	~c_file_tcp(){close();};
+};
 
 #ifdef HAVE_LIBZ
 class c_file_gz : public c_file {
@@ -82,7 +114,7 @@ class c_file_gz : public c_file {
 	virtual int doclose(void);
   public:
 	virtual int isopen(void);	
-	int open(const char *name,const char * mode);
+	int open(const char *host,const char * port);
 	c_file_gz(void){gzh=NULL;};
 	~c_file_gz(){close();};
 };

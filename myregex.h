@@ -1,6 +1,10 @@
 #ifndef _MYREGEX_H_
 #define _MYREGEX_H_
+#ifdef HAVE_CONFIG_H 
+#include "config.h"
+#endif
 
+#include <sys/types.h>
 #include <regex.h>
 #include <assert.h>
 //#include "mystring.h"

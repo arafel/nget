@@ -1,9 +1,12 @@
 #ifndef _SOCKSTUFF_H_
 #define _SOCKSTUFF_H_
+#ifdef HAVE_CONFIG_H 
+#include "config.h"
+#endif
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <sys/socket.h>
+//#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
  
@@ -17,7 +20,7 @@ int get_connection1(int socket_type, u_short port);
 int get_connection2(int socket_type,int gc_listening_socket);
 //int get_connection2(int socket_type);
 int sock_write(int sockfd, const char *buf, size_t count);
-int sock_read(int sockfd, char *buf, size_t count);
+int sock_read(int sockfd, void *buf, size_t count);
 int sock_gets(int sockfd, char *str, size_t count);
 int sock_puts(int sockfd, const char *str);
 

@@ -1,14 +1,23 @@
-nget 0.2  Copyright 1999 Matt Mueller <donut@azstarnet.com>
+nget 0.3  Copyright 1999 Matt Mueller <donut@azstarnet.com>
 
 Install:
-0) if you d/l'd the -withuulib version go to step 1. If you have uulib already go to step 0.3 now.
-0.1) d/l uulib src from http://www.uni-frankfurt.de/~fp/uudeview
-0.2) unpack it somewhere
-0.3) set the UUDIR option in the makefile to where you put it
-1) edit Makefile to change install location if desired, and to set other compile
-options.
-2) make
+0) if you have uulib as a shared lib: ./configure and skip to step 2
+1) d/l uulibsrc from http://www.uni-frankfurt.de/~fp/uudeview 
+1.1) unpack it and run its ./configure && make
+1.2) ./configure --with-uulib=/dir/that/has/uulib
+1.2a) depending upon your compiler you may need to do something like:
+  CXXFLAGS="-fhandle-exceptions -O2" ./configure ....
+1.2b) if you get strange errors about redo(and other vars) possibly being used
+  uninitialized try compiling with a lower optimization (seen on a freebsd sys,
+  with gcc 2.7.2.1)
+2) make 
 3) make install
+
+nget is developed on linux (glibc2), and compiles without modifications on
+freebsd 2.2.8(did need the CXXFLAGS env to be set as outlined above though, if
+someone has an autoconf test for wether a flag is needed to enable exceptions,
+I'd appreciate it).  It should probably work on other systems with little or no
+modifications.
 
 Copying:
 This program is free software; you can redistribute it and/or modify
@@ -23,4 +32,4 @@ to me for possible inclusion in the main source.
 You can get the latest version at 
 http://www.azstarnet.com/~donut/programs.html
 or
-(ftp|http)://sunsite.unc.edu/pub/Linux/apps/?network?
+(ftp|http)://sunsite.unc.edu/pub/Linux/apps/?network? (not yet)

@@ -1,7 +1,9 @@
 #ifndef _LOG_H_
 #define _LOG_H_
+#ifdef HAVE_CONFIG_H 
+#include "config.h"
+#endif
 #include <string.h>
-#define errtoa strerror
 #define PERROR(a, args...) fprintf(stderr,a "\n" , ## args)
 #define PMSG(a, args...) printf(a "\n" , ## args)
 //#define PDEBUG(a, args...) printf(a , ## args)
@@ -18,6 +20,7 @@ extern int quiet;
 #define EX_P_FATAL 3
 //user errors
 #define EX_U_FATAL 4
+#define EX_U_WARN 1
 //application errors
 #define EX_A_FATAL 6
 

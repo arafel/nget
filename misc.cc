@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H 
+#include "config.h"
+#endif
 #ifdef WRFTP
 #include "main.h"
 #endif
@@ -10,13 +13,37 @@
 #include <errno.h>
 #include "myregex.h"
 
+#ifndef HAVE_LOCALTIME_R
+struct tm * localtime_r(const time_t *t,struct tm * tmu){
+	struct tm *t1=localtime(t);
+	if (!t1) return NULL;
+	memcpy(tmu,t1,sizeof(struct tm));
+	return tmu;
+}
+#endif
+#ifdef TIMEZONE_IS_VAR 
+#define my_timezone timezone
+void init_my_timezone(void){
+//	printf("my_timezone=%li\n",my_timezone);
+}
+#else
+long my_timezone=0;
+void init_my_timezone(void){
+	struct tm tm;
+	time_t t;
+	time(&t);
+	localtime_r(&t,&tm);
+	my_timezone=tm.tm_gmtoff;
+//	printf("my_timezone=%li\n",my_timezone);
+}
+#endif
 
 int doopen(int &handle,const char * name,int access,int mode=0) {
    if ((handle=open(name,access,mode))==-1){
 //      if (domiscquiet)
 //      domiscquiet--;
 //      else
-      PERROR("Error opening %s: %s",name,errtoa(errno));
+      PERROR("Error opening %s: %s",name,strerror(errno));
       return -1;
    }
    else return 0;
@@ -26,7 +53,7 @@ int dofopen(FILE * &f,const char * name,const char * mode,int domiscquiet=0) {
 //   FILE *f;
    if ((f=fopen(name,mode))==NULL){
       if (!domiscquiet)
-        PERROR("Error opening %s: %s",name,errtoa(errno));
+        PERROR("Error opening %s: %s",name,strerror(errno));
       return -1;
    }
    return 0;
@@ -87,16 +114,19 @@ size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%m
 //	return timestr;
 }
 
-#ifndef errtoa
-extern int _sys_nerr;
-extern const char *const _sys_errlist[];
-const char * errtoa(int err){
-	if (err>_sys_nerr)
-	     return "max errno exceeded";
-	else if (err<0)
-	     return "min errno exceeded";
-	else
-	     return _sys_errlist[err];	
+#ifndef HAVE_STRERROR
+//extern int _sys_nerr;
+//extern const char *const _sys_errlist[];
+const char * strerror(int err){
+//	if (err>_sys_nerr)
+//	     return "max errno exceeded";
+//	else if (err<0)
+//	     return "min errno exceeded";
+//	else
+//	     return _sys_errlist[err];	
+	static char buf[5];
+	sprintf(buf,"%i",err);
+	return buf;
 }
 #endif 
 // threadsafe.
@@ -158,7 +188,7 @@ time_t decode_mdtm(const char * cbuf){
    strncpy(buf,cbuf+12,2);
    tblock.tm_sec=atoi(buf);
 
-   return mktime(&tblock)-timezone;
+   return mktime(&tblock)-my_timezone;
 }
 
 char *text_month[13]={"Jan", "Feb", "Mar", "Apr",
@@ -240,7 +270,6 @@ time_t decode_textdate(const char * cbuf){
 		tblock.tm_mday=atoi(xlsl.subs(2));
 		if (xlsl.subs(3)[2]==':'){
 			struct tm lt;
-//                  lt=localtime(&data.curtime);
 #ifdef CURTIME
             localtime_r(&CURTIME,&lt);
 #else
@@ -264,7 +293,7 @@ time_t decode_textdate(const char * cbuf){
 		return 0;
 	}else
 		PDEBUG("decode_textdate: %s %i %i %i %i %i %i %i",tdt,tblock.tm_year,tblock.tm_mon,tblock.tm_mday,tblock.tm_hour,tblock.tm_min,tblock.tm_sec,td_tz);
-	return mktime(&tblock)-timezone-td_tz;
+	return mktime(&tblock)-my_timezone-td_tz;
 }
 #ifdef NO_REGEXPS
 time_t decode_textdate(const char * cbuf){
@@ -283,7 +312,7 @@ time_t decode_textdate(const char * cbuf){
 		     tblock.tm_mday=atoi(cbuf+4);
 		if (cbuf[9]==':'){
 			struct tm lt;
-//                  lt=localtime(&data.curtime);
+			
 #ifdef CURTIME
             localtime_r(&CURTIME,&lt);
 #else
@@ -365,7 +394,7 @@ time_t decode_textdate(const char * cbuf){
 		return 0;
 	}else
 		PDEBUG("decode_textdate: %s %i %i %i %i %i %i %i",tdt,tblock.tm_year,tblock.tm_mon,tblock.tm_mday,tblock.tm_hour,tblock.tm_min,tblock.tm_sec,td_tz);
-	return mktime(&tblock)-timezone-td_tz;
+	return mktime(&tblock)-my_timezone-td_tz;
 }
 #endif
 
