@@ -356,7 +356,8 @@ int decode_texttz(const char * buf){
 c_regex_r xrfc("^[A-Za-z, ]*([0-9]{1,2})[- ](.{3,9})[- ]([0-9]{2,4}) "TIME_REG2" *(.*)$"),
 	xasctime("^[A-Za-z, ]*(...) +([0-9]{1,2}) "TIME_REG2" ([0-9]{2,4}) *(.*)$"),
 	xlsl("^(...) +([0-9]{1,2}) +([0-9:]{4,5})$"),
-	xeasy("^([0-9]{1,4})[-/]([0-9]{1,2})[-/]([0-9]{2,4})( *"TIME_REG2" *(.*))?$");
+	xeasy("^([0-9]{1,4})[-/]([0-9]{1,2})[-/]([0-9]{2,4})( *"TIME_REG2" *(.*))?$"),
+	xiso("^([0-9]{4})-?([0-9]{2})-?([0-9]{2})([T ]?([0-9]{1,2})(:?([0-9]{2})(:?([0-9]{2}))?)?)? *([-+A-Z].*)?$");
 c_regex_nosub xtime_t("^[0-9]+$")//seconds since 1970 (always gmt)
 		;
 time_t decode_textdate(const char * cbuf, bool local){
@@ -376,8 +377,25 @@ time_t decode_textdate(const char * cbuf, bool local){
 		tblock.tm_min=atoi(rsubs.subs(5));
 		if(rsubs.sublen(6)>0)
 			tblock.tm_sec=atoi(rsubs.subs(7));
-		td_tz=decode_texttz(rsubs.subs(8));
-//		xrfc.freesub();
+		if(rsubs.sublen(8)>0)
+			td_tz=decode_texttz(rsubs.subs(8));
+	}else if (!xiso.match(cbuf,&rsubs)){
+		tdt="iso";
+		yearlen=rsubs.sublen(1);
+		tblock.tm_year=atoi(rsubs.subs(1));
+		tblock.tm_mon=atoi(rsubs.subs(2))-1;
+		tblock.tm_mday=atoi(rsubs.subs(3));
+		if(rsubs.sublen(4)>0){
+			tblock.tm_hour=atoi(rsubs.subs(5));
+			if(rsubs.sublen(6)>0){
+				tblock.tm_min=atoi(rsubs.subs(7));
+				if(rsubs.sublen(8)>0){
+					tblock.tm_sec=atoi(rsubs.subs(9));
+				}
+			}
+		}
+		if(rsubs.sublen(10)>0)
+			td_tz=decode_texttz(rsubs.subs(10));
 	}else if (!xasctime.match(cbuf,&rsubs)){
 		tdt="asctime-date";
 		tblock.tm_mon=decode_textmonth(rsubs.subs(1));
@@ -388,7 +406,6 @@ time_t decode_textdate(const char * cbuf, bool local){
 			tblock.tm_sec=atoi(rsubs.subs(6));
 		tblock.tm_year=atoi(rsubs.subs(7));
 		yearlen=rsubs.sublen(7);
-//		xasctime.freesub();
 	}else if (!xlsl.match(cbuf,&rsubs)){
 		tdt="ls-l-date";
 		tblock.tm_mon=decode_textmonth(rsubs.subs(1));
@@ -435,7 +452,8 @@ time_t decode_textdate(const char * cbuf, bool local){
 			if(rsubs.sublen(7)>0){
 				tblock.tm_sec=atoi(rsubs.subs(8));
 			}
-			td_tz=decode_texttz(rsubs.subs(9));
+			if(rsubs.sublen(9)>0)
+				td_tz=decode_texttz(rsubs.subs(9));
 		}
 	}else if (!xtime_t.match(cbuf)){
 		tdt="time_t-date";
