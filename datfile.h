@@ -92,7 +92,7 @@ typedef map<const char*, c_data_item*, ltstr> data_list ;
 class c_data_section: public c_data_item
 {
   public:
-    data_list data;
+	data_list data;
 /*	int getiteml(const char *name,long *l){
 		c_data_item *i=rgetitem(name);
 		if (i && i->type==0 && i->ierr==0) {*l=i->i;return 0;}
@@ -140,19 +140,19 @@ class c_data_section: public c_data_item
 		return delitem(data.find(name));
 	}
 
-    void read_list(c_file *f);
-    void save_list(int &r,FILE *f,const char *cname,const char*termin="\n");
-    void cleanup(void);
-    c_data_section(const char *k):c_data_item(k)
+	void read_list(c_file *f);
+	void save_list(int &r,FILE *f,const char *cname,const char*termin="\n");
+	void cleanup(void);
+	c_data_section(const char *k):c_data_item(k)
 	{
 //	    data=new data_list;
 //	    data["default"]=new c_data_item("test");
-	    //ierr=-3;
+		//ierr=-3;
 		type=1;
 	};
-    virtual ~c_data_section()
+	virtual ~c_data_section()
 	{
-	    cleanup();
+		cleanup();
 	};
 };
 //typedef hash_map<const char*, data_section*, hash<const char*>, eqstr> t_data_list ;
@@ -162,15 +162,15 @@ class c_data_file
 {
 //    FILE *f;
 //    t_data_file data;
-    int changed;
+	int changed;
   public:
-    string filename;
-    c_data_section data;
+	string filename;
+	c_data_section data;
 
-    void setfilename(const char * f);
+	void setfilename(const char * f);
 
-    int read(void);
-    void save(void);
+	int read(void);
+	void save(void);
 
 
 //    c_data_section* find (char*section);
@@ -183,13 +183,13 @@ class c_data_file
 //	    if (i==data.end())return NULL;
 //	    else return (*i).second;	    
 //	};
-    
+
 //    ~c_data_file()
 //	{
 //	    if (changed) save();
 //	    data.cleanup();
 //	};
-    
+
 //    data_section* findif(char *name, char*val);
 //    data_section* findifa(char *name, char*val,char *name2, char*val2);
 };

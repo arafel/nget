@@ -75,16 +75,16 @@ char * goodstrtok(char **cur, char sep);
 
 //whee!
 class strtoker {
-	protected:
-		char **toks;
-		int maxtoks;
-	public:
-		int numtoks;
-		char tokchar;
-		char * operator[](int i){return toks[i];}
-		int tok(char *str);
-		strtoker(int num,char tok);
-		~strtoker(){delete toks;}
+    protected:
+        char **toks;
+        int maxtoks;
+    public:
+        int numtoks;
+        char tokchar;
+        char * operator[](int i){return toks[i];}
+        int tok(char *str);
+        strtoker(int num,char tok);
+        ~strtoker(){delete toks;}
 };
 
 int is_text(const char * f);

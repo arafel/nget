@@ -134,7 +134,7 @@ class c_debug_file {
 			curout=NULL;
 #define DEF_MEM_LEVEL 8
 			assert(deflateInit2(&zstrm, Z_DEFAULT_COMPRESSION,Z_DEFLATED, -MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY)==Z_OK);
-		        /* windowBits is passed < 0 to suppress zlib header - got this from zlib code. */
+			/* windowBits is passed < 0 to suppress zlib header - got this from zlib code. */
 
 //			assert(deflateInit(&zstrm,Z_DEFAULT_COMPRESSION)==Z_OK);
 //			printf("in %p %i %li\n",zstrm.next_in,zstrm.avail_in,zstrm.total_in);

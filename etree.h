@@ -106,7 +106,7 @@ struct e_binary_compose : public e_unary_function<T, BR> {
 template <class Operation1, class Operation2, class Operation3>
 inline e_binary_compose<typename Operation2::arg_type, typename Operation2::ret_type, typename Operation3::ret_type> *
 ecompose2(const Operation1 *op1, const Operation2 *op2, const Operation3 *op3) {
-	  return new e_binary_compose<typename Operation2::arg_type, typename Operation2::ret_type, typename Operation3::ret_type>(op1, op2, op3);
+	return new e_binary_compose<typename Operation2::arg_type, typename Operation2::ret_type, typename Operation3::ret_type>(op1, op2, op3);
 };
 
 typedef e_unary_function<ubyte*,bool> generic_pred;

@@ -26,6 +26,6 @@
 #include <stdlib.h>
 char * newstrcpy(char *&dest, const char *src);
 inline void safefree(char *&p){
-	if (p){free(p);p=NULL;}
+    if (p){free(p);p=NULL;}
 }
 #endif

@@ -77,7 +77,7 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 
 		int stdputline(int echo,const char * str,...);
 		int putline(int echo, const char * str,...)
-	        __attribute__ ((format (printf, 3, 4)));
+			__attribute__ ((format (printf, 3, 4)));
 		int doputline(int echo,const char * str,va_list ap);
 		int getline(int echo);
 		int getreply(int echo);

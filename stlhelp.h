@@ -21,17 +21,17 @@
 
 struct eqstr
 {
-    bool operator()(const char* s1, const char* s2) const
+	bool operator()(const char* s1, const char* s2) const
 	{
-	    return strcmp(s1, s2) == 0;
+		return strcmp(s1, s2) == 0;
 	}
 };
 struct ltstr
 {
-        bool operator()(const char* s1, const char* s2) const
-	  {
-                  return strcmp(s1, s2) < 0;
-	  }
+	bool operator()(const char* s1, const char* s2) const
+	{
+		return strcmp(s1, s2) < 0;
+	}
 };
 
 //string class that won't segv on NULL to constructor.  todo: also protect assign() ?

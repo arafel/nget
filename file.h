@@ -78,16 +78,16 @@ class c_file {
 
   public:
 #ifdef FILE_DEBUG
-	  c_debug_file *file_debug;
+	c_debug_file *file_debug;
 #endif
 //	c_rbuffer *rbuffer;
-	  c_file_buffy *rbuffer;
-	  char * rbufp(void){return rbuffer->cbufp();}
+	c_file_buffy *rbuffer;
+	char * rbufp(void){return rbuffer->cbufp();}
 
 	c_file(void);
 	virtual ~c_file();
 	ssize_t putf(const char *buf,...)
-        __attribute__ ((format (printf, 2, 3)));
+		__attribute__ ((format (printf, 2, 3)));
 	char * gets(char *data,size_t len){return dogets(data,len);}
 	ssize_t write(const void *data,size_t len){return dowrite(data,len);}
 	ssize_t read(void *data,size_t len){return doread(data,len);}
