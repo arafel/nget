@@ -201,7 +201,7 @@ generic_pred * make_pred(const char *optarg){
 	generic_pred * p=NULL,*px=NULL,*py=NULL;
 	for (;i!=e_parts.end();++i){
 		if (!x){
-			printf("x %s\n",(*i).c_str());
+			PDEBUG(DEBUG_MIN,"x %s\n",(*i).c_str());
 			x=&(*i);
 			if (px && py){
 				if (x->compare("&&")==0 || x->compare("and")==0)
@@ -217,16 +217,16 @@ generic_pred * make_pred(const char *optarg){
 				x=NULL;
 			}
 		}else if (!y){
-			printf("y %s\n",(*i).c_str());
+			PDEBUG(DEBUG_MIN,"y %s\n",(*i).c_str());
 			y=&(*i);
 		} else {
-			printf("z %s\n",(*i).c_str());
+			PDEBUG(DEBUG_MIN,"z %s\n",(*i).c_str());
 			for (match=0;nntp_matches[match].name;match++){
 				if (strcasecmp(nntp_matches[match].name,x->c_str())==0)
 					break;
 			}
 			if (nntp_matches[match].name){
-				printf("%s %i %i\n",nntp_matches[match].name,nntp_matches[match].type,nntp_matches[match].ofs);
+				PDEBUG(DEBUG_MIN,"%s %i %i\n",nntp_matches[match].name,nntp_matches[match].type,nntp_matches[match].ofs);
 				if (nntp_matches[match].type==E_STRING){
 					//c_regex_nosub *reg=new c_regex_nosub(optarg,REG_EXTENDED + ((gflags&GETFILES_CASESENSITIVE)?0:REG_ICASE));
 					c_regex_nosub *reg=NULL;
@@ -308,7 +308,7 @@ generic_pred * make_pred(const char *optarg){
 					//p=egeneric(e_time_t_,nntp_matches[match].ofs,(ubyte*)atoul(y->c_str()));
 					//time_t t=atol(y->c_str());
 					time_t t=decode_textdate(y->c_str());
-					printf("t=%li\n",t);
+					PDEBUG(DEBUG_MIN,"t=%li\n",t);
 					if (nntp_matches[match].specp)
 						p=nntp_matches[match].specp(e_time_t_,(void*)t);
 					else
