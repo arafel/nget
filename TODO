@@ -1,12 +1,9 @@
 * exit with non-zero exit status if paths cannot be changed to (and other errors?)
 
-*make .gziping cache files an rc option
 *add option for servers that tell you size of file with 1 eol char (but send message with 2)
 
 reports of huge memory usage (150MB) after running 12 hours (~370 -r's and -p's) (only when "dragging on"?)
 look into using a memory debugger
-
-ngetlite: use random tempfile name (fix multiple ngetlites running in one dir)
 
 -p/-P when dir doesn't exist should just ignore all commands until a correct dir is encountered (and set a seperate error code to be exited with)
 
