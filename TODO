@@ -1,4 +1,11 @@
+reports of huge memory usage (150MB) after running 12 hours (~370 -r's and -p's) (only when "dragging on"?)
+look into using a memory debugger
 
+ngetlite: use random tempfile name (fix multiple ngetlites running in one dir)
+
+-p/-P when dir doesn't exist should just ignore all commands until a correct dir is encountered (and set a seperate error code to be exited with)
+
+*create .ngetrc on first run from NNTPSERVER or -h if specified instead.  (and add new servers not seen before when used with -h?  need to keep comments somehow though...)
 
 *derr on uulib messages - file already exists derr.. is the current hack good enough?
 
@@ -11,7 +18,6 @@
 *do servinfo's get leaked?
 
 definataly gonna do:
-*use write-flush-rename for midinfo/headers/(and config, if we ever modify it)
 *make manpage for ngetlite
 *make MID_INFO_MIN_KEEP, etc config options
 *update STL includes/etc to use new non-.h files, and std namespace
@@ -49,6 +55,7 @@ might do eventually:
 	d/l'ing multiples of the same file.. could be adapted to such though,
 	by adding files to a similar list after they are d/l'd and we know
 	their names.
+ * threaded (background) decoding
 
 only considering:
 

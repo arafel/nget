@@ -44,7 +44,7 @@ ngetlite: $(LITEOBJS) .depend
 
 @NOUU@@UULIB@:
 @NOUU@	(cd @UUDIR@; ./configure)
-@NOUU@	make -C @UUDIR@ libuu.a
+@NOUU@	$(MAKE) -C @UUDIR@ libuu.a
 
 
 nrangetest: nrangetest.o file.o sockstuff.o nrange.o log.o
@@ -103,11 +103,11 @@ config.status: configure
 	
 clean:
 	-rm nget ngetlite *.o
-	-make -C uulib clean
+	-$(MAKE) -C uulib clean
 
 distclean: clean
 	-rm config.status config.h config.cache config.log Makefile stamp-h .depend *~ .*~
-	-make -C uulib distclean
+	-$(MAKE) -C uulib distclean
 #	-rm *~ config.h config.cache config.log Makefile stamp-h .depend
 #	-cp .depend.dist .depend
 

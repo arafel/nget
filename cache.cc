@@ -341,11 +341,11 @@ int c_nntp_cache::additem(c_nntp_header *h){
 		if (f->req==h->req && f->partoff==h->partoff /*-duh, not good-&& f->tailoff==h->tailoff*/){
 			//these two are merely for debugging.. it shouldn't happen (much..? ;)
 			if (!(f->author==h->author)){//older (g++) STL versions seem to have a problem with strings and !=
-				printf("%lu->%s was gonna add, but author is different?\n",h->articlenum,f->bamid().c_str());
+				PDEBUG(DEBUG_MED,"%lu->%s was gonna add, but author is different?\n",h->articlenum,f->bamid().c_str());
 				continue;
 			}
 			if (!(f->subject==h->subject)){
-				printf("%lu->%s was gonna add, but subject is different?\n",h->articlenum,f->bamid().c_str());
+				PDEBUG(DEBUG_MED,"%lu->%s was gonna add, but subject is different?\n",h->articlenum,f->bamid().c_str());
 				continue;
 			}
 			t_nntp_file_parts::iterator op;
@@ -630,9 +630,12 @@ c_nntp_cache::~c_nntp_cache(){
 #endif
 	t_nntp_files::iterator i;
 	if (saveit && (files.size() || fileread)){
+		string tmpfn,fn;
+		fn=cdir + file;
+		tmpfn=fn+".tmp";
 		int r=testmkdir(cdir.c_str(),S_IRWXU);
 		if (r) printf("error creating dir %s: %s(%i)\n",cdir.c_str(),strerror(r==-1?errno:r),r==-1?errno:r);
-		else if(!(r=f.open((cdir + file).c_str(),
+		else if(!(r=f.open(tmpfn.c_str(),
 #ifdef HAVE_LIBZ
 						"wb"
 #else
@@ -686,9 +689,12 @@ c_nntp_cache::~c_nntp_cache(){
 			if (count!=totalnum){
 				printf("warning: wrote %lu parts from cache, expecting %lu\n",count,totalnum);
 			}
+			if (rename(tmpfn.c_str(), fn.c_str())){
+				printf("error renaming %s > %s: %s(%i)\n",tmpfn.c_str(),fn.c_str(),strerror(errno),errno);
+			}
 			return;
 		}else{
-			printf("error opening %s: %s(%i)\n",(cdir + file).c_str(),strerror(errno),errno);
+			printf("error opening %s: %s(%i)\n",tmpfn.c_str(),strerror(errno),errno);
 		}
 	}
 
@@ -804,7 +810,8 @@ int c_mid_info::save(void){
 		}
 	}
 	int nums=0;
-	if(!f.open(file.c_str(),
+	string tmpfn=file+".tmp";
+	if(!f.open(tmpfn.c_str(),
 #ifdef HAVE_LIBZ
 				"wb"
 #else
@@ -823,6 +830,10 @@ int c_mid_info::save(void){
 		}
 		if (debug) printf(" (%i) done.\n",nums);
 		f.close();
+		if (rename(tmpfn.c_str(), file.c_str())){
+			printf("error renaming %s > %s: %s(%i)\n",tmpfn.c_str(),file.c_str(),strerror(errno),errno);
+			return -1;
+		}
 	}else
 		return -1;
 	return 0;

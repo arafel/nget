@@ -1,3 +1,11 @@
+nget (0.13.1) unstable; urgency=low
+
+  * Use write to tempfile then rename for saving cache and midinfo.
+  * Made some forgotten printfs ("was gonna add...") into PDEBUGs.
+  * Use $(MAKE) instead of make for making subdirs. (Howard Jones)
+
+ -- Matt Mueller <donut@azstarnet.com>  Mon,  8 Jan 2001 16:36:31 -0700
+
 nget (0.13) unstable; urgency=low
 
   * Locks midinfo files better.  Previous versions would not have corruption,
