@@ -426,7 +426,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 				//						break;
 				case 'T':
 					options.testmode=1;
-					printf("testmode now %i\n",options.testmode);
+					PDEBUG(DEBUG_MIN,"testmode now %i",options.testmode);
 					break;
 				//case 1:
 				case 'R':
