@@ -400,30 +400,30 @@ int sock_read(int sockfd, void *buf, size_t count){
    will be read and discarded!  You have been warned. */
 int sock_gets(int sockfd, char *str, size_t count) {
 //  int bytes_read;
-  size_t total_count = 0, real_total=0;
-  char *current_position;
-  char last_read = 0;
+	size_t total_count = 0, real_total=0;
+	char *current_position;
+	char last_read = 0;
 
-  current_position = str;
-  while (last_read != 10) {
+	current_position = str;
+	while (last_read != 10) {
 //    bytes_read = read(sockfd, &last_read, 1);
 //    if (bytes_read <= 0) {
-    //if (read(sockfd, &last_read, 1) <= 0) {
-    if (sock_read(sockfd, &last_read, 1) <= 0) {
-      /* The other side may have closed unexpectedly */
-      return -1; /* Is this effective on other platforms than linux? */
-    }
-     real_total++;
-    if ( (total_count < count) && (last_read != 10) && (last_read !=13) ) {
-      current_position[0] = last_read;
-      current_position++;
-      total_count++;
-    }
-  }
-  if (count > 0)
-    current_position[0] = 0;
+		//if (read(sockfd, &last_read, 1) <= 0) {
+		if (sock_read(sockfd, &last_read, 1) <= 0) {
+			/* The other side may have closed unexpectedly */
+			return -1; /* Is this effective on other platforms than linux? */
+		}
+		real_total++;
+		if ( (total_count < count) && (last_read != 10) && (last_read !=13) ) {
+			current_position[0] = last_read;
+			current_position++;
+			total_count++;
+		}
+	}
+	if (count > 0)
+		current_position[0] = 0;
 //  return total_count;
-  return real_total;
+	return real_total;
 }
 
 /* This function writes a character string out to a socket.  It will 

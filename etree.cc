@@ -23,19 +23,19 @@
 
 template <class Op>
 struct e_generic : public e_unary_function<ubyte *, bool> {
-        typedef Op op_type;
-        typedef typename Op::arg1_type arg1_type;
-        typedef typename Op::arg2_type arg2_type;
-      arg2_type val2;
-        const Op *O;
-		int ofs;
-//		void *val;
+	typedef Op op_type;
+	typedef typename Op::arg1_type arg1_type;
+	typedef typename Op::arg2_type arg2_type;
+	arg2_type val2;
+	const Op *O;
+	int ofs;
+//	void *val;
 
-//      e_binder2nd(const arg2_type v):val2(v){};
-		e_generic(const Op *aO,int aofs,arg2_type v){
-			ofs=aofs;val2=v;O=aO;
-		}
-//        virtual ret_type operator()(const arg_type v) const {return (*O)(*((arg1_type*)(v+ofs)),val2);};
+//	e_binder2nd(const arg2_type v):val2(v){};
+	e_generic(const Op *aO,int aofs,arg2_type v){
+		ofs=aofs;val2=v;O=aO;
+	}
+//	virtual ret_type operator()(const arg_type v) const {return (*O)(*((arg1_type*)(v+ofs)),val2);};
 };
 //typedef e_binary_function<ulong,ulong,bool> bin_fun_ulong;
 template <class Type>

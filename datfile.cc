@@ -85,13 +85,13 @@ void c_data_section::read_list(c_file *f){
 		if (slen<1)
 			continue;
 		r=strspn(buf," \t");
-	    if (buf[r]=='}') {
+		if (buf[r]=='}') {
 //			printf("end section\n");
 			break;
 		}
 		if (!(slen>r))
 			continue;
-	    if (buf[r]=='{')
+		if (buf[r]=='{')
 		{
 			c_data_section *d=new c_data_section(buf+r+1);
 			//		c->data[buf+r+1]=d;
@@ -101,7 +101,7 @@ void c_data_section::read_list(c_file *f){
 		}
 		else if (buf[0]!='/')
 		{
-		    n=buf+r;
+			n=buf+r;
 			if((v=strchr(n,'='))){
 				*v=0;
 				v++;
@@ -123,9 +123,9 @@ void c_data_section::save_list(int &r,FILE *f,const char *cname,const char *term
 		item=(*i).second;
 //		item->feel();
 		if (item->type==1)
-		     ((c_data_section*)item)->save_list(r,f,(*i).first);
+			((c_data_section*)item)->save_list(r,f,(*i).first);
 		else{
-		     fprintf(f,"%*s%s=%s%s",r,"",(*i).first,item->str.c_str(),termin);
+			fprintf(f,"%*s%s=%s%s",r,"",(*i).first,item->str.c_str(),termin);
 //			 printf("saving %*s%s=%s\n",r,"",(*i).first,item->str.c_str());
 		}
 		++i;
@@ -144,7 +144,7 @@ void c_data_file::setfilename(const char * f){
 
 int c_data_file::read(void){
 	if (filename.size()==0)
-	     return -2;
+		return -2;
 //	char buf[df_BUFSIZE];
 //	FILE *f=fopen(filename.c_str(),"r");
 	c_file_fd f;
@@ -159,7 +159,7 @@ int c_data_file::read(void){
 };
 void c_data_file::save(void){
 	if (filename.size()==0)
-	     return;
+		return;
 //	dobackup(filename.str());
 	int r=-1;
 	FILE *f=fopen(filename.c_str(),"w");

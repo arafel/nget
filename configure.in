@@ -20,7 +20,7 @@ dnl Checks for libraries.
 dnl check for liblockfile
 usez=yes
 AC_ARG_WITH(lockfile,
-[ --with-lockfile(=ldir)           Use liblockfile (optionally in ldir).],
+[ --with-lockfile(=ldir)   Use liblockfile (optionally in ldir).],
 	if test "$withval" = "no"; then
 		usez=no
 	elif test "$withval" != "yes"; then
@@ -44,9 +44,9 @@ fi
 dnl Check for zlib
 usez=yes
 AC_ARG_WITH(zlib,
-[ --without-zlib          Don't use zlib.  Faster loading/quiting, but uses
+[ --without-zlib           Don't use zlib.  Faster loading/quiting, but uses
                           much more space.
- --with-zlib=zdir        Assume zlib has been compiled in zdir, rather than
+ --with-zlib=zdir         Assume zlib has been compiled in zdir, rather than
                           installed to system dirs.],
 	if test "$withval" = "no"; then
 		usez=no
@@ -68,8 +68,8 @@ fi
 dnl check for pcre (perl-compatible regex)
 usez=no
 AC_ARG_WITH(pcre,
-[ --with-pcre(=pdir)           Use perl-compatible regex library (optionally
-                               in pdir).],
+[ --with-pcre(=pdir)       Use perl-compatible regex library (optionally
+                          in pdir).],
 	if test "$withval" = "no"; then
 		usez=no
 	elif test "$withval" != "yes"; then
@@ -96,8 +96,7 @@ fi
 dnl check for libpopt
 usez=yes
 AC_ARG_WITH(popt,
-[ --with-popt(=pdir)           Use libpopt (getopt replacement) (optionally in
-                               pdir).],
+[ --with-popt(=pdir)       Use libpopt (getopt replacement) (optionally in pdir)],
 	if test "$withval" = "no"; then
 		usez=no
 	elif test "$withval" != "yes"; then
@@ -130,7 +129,7 @@ else
 fi
 AC_ARG_WITH(uulib,
 [ --with-uulib=UULIBDIR    specify dir containing uulib headers and libuu.a, if
-                           not specified, configure will check in system dirs.],
+                          not specified, configure will check in system dirs.],
 	if test "$withval" != "no"; then
 		UUDIR=$withval
 	fi
@@ -157,8 +156,8 @@ AC_SUBST(UULIB)
 
 
 AC_ARG_ENABLE(filecompare,
-[--disable-filecompare     Do not test to see if a duplicate downloaded file is
-                           the same as the original, keep all duplicates.],
+[ --disable-filecompare    Do not test to see if a duplicate downloaded file is
+                          the same as the original, keep all duplicates.],
 	if test "$enableval" != "no"; then
 		AC_DEFINE(USE_FILECOMPARE)
 	fi
@@ -166,14 +165,14 @@ AC_ARG_ENABLE(filecompare,
 		AC_DEFINE(USE_FILECOMPARE)
 )
 AC_ARG_ENABLE(checksum,
-[ --enable-checksum=method  Set which method to use for comparing headers and
-                           for short-tempnames.  Either crc32 or adler32.
-                           default is crc32, as it seems to get less repeated
-                           values, however adler32 is said to be faster.  It
-                           probably doesn't make much difference.
- --disable-checksum        Disable usage of checksums for comparing headers as
-                           well as for short-tempnames, uses STL hash function
-						   instead.],
+[ --enable-checksum=method Set which method to use for comparing headers and
+                          for short-tempnames.  Either crc32 or adler32.
+                          default is crc32, as it seems to get less repeated
+                          values, however adler32 is said to be faster.  It
+                          probably doesn't make much difference.
+ --disable-checksum       Disable usage of checksums for comparing headers as
+                          well as for short-tempnames, uses STL hash function
+                          instead.],
 	if test "$enableval" != "no"; then
 		if test "$enableval" != "yes"; then
 			AC_DEFINE_UNQUOTED(CHECKSUM,$enableval)
@@ -186,7 +185,7 @@ AC_ARG_ENABLE(checksum,
 )
 
 AC_ARG_ENABLE(debug,
- [ --enable-debug     Enable debug code, asserts, etc.],
+ [ --enable-debug           Enable debug code, asserts, etc.],
  	if test "$enableval" != "no"; then
  		nget_debug=yes
  	fi

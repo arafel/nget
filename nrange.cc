@@ -169,7 +169,7 @@ int c_nrange::load(string fn,int merge=0){
 #else
 				O_RDONLY
 #endif
-			   )){
+			)){
 		char *lp,*hp;
 		while (f.bgets()>0){
 			lp=f.rbufp();
@@ -237,7 +237,7 @@ int c_nrange::save(){
 #else
 				O_CREAT|O_WRONLY|O_TRUNC,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 #endif
-			   )){
+			)){
 		if (debug){printf("saving nrange: %i contiguous ranges..",rlist.size());fflush(stdout);}
 		print(&f);
 		if (debug) printf(" done.\n");

@@ -92,7 +92,7 @@ int c_file::flush(int local=0){
 //	int i=0;
 //###########3 dowrite(buffers..)
 	if (!local)
-	     return doflush();
+		return doflush();
 	return 0;
 }
 int c_file::close(void){
@@ -162,7 +162,7 @@ int c_file_gz::open(const char *name,const char * mode){
 }
 int c_file_gz::doflush(void){
 	if (gzh)
-	     return gzflush(gzh,Z_SYNC_FLUSH);
+		return gzflush(gzh,Z_SYNC_FLUSH);
 	return 0;
 }
 int c_file_gz::doclose(void){
@@ -226,7 +226,7 @@ int c_file_fd::open(const char *host,const char *mode){
 }
 int c_file_fd::doflush(void){
 	if (fd>=0)
-	     return fsync(fd);
+		return fsync(fd);
 	return 0;
 }
 int c_file_fd::doclose(void){
@@ -258,7 +258,7 @@ int c_file_stream::open(const char *name,const char * mode){
 }
 int c_file_stream::doflush(void){
 	if (fs)
-	     return fflush(fs);
+		return fflush(fs);
 	return 0;
 }
 int c_file_stream::doclose(void){
@@ -296,7 +296,7 @@ int c_file_tcp::open(const char *host,const char * port){
 }
 int c_file_tcp::doflush(void){
 	if (sock>=0)
-	     return fsync(sock);
+		return fsync(sock);
 	return 0;
 }
 int c_file_tcp::doclose(void){

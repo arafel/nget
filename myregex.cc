@@ -55,7 +55,7 @@ c_regex_nosub::c_regex_nosub(const char * pattern,int cflags):c_regex_base(patte
 
 int c_regex_subs::doregex(regex_t *regex,const char *str){
 	if ((re_err=regexec(regex,str,nregmatch,regmatch,0)))
-	     return re_err;
+		return re_err;
 	freesub();
 	rnsub=regex->re_nsub;
 	assert(nregmatch>=rnsub);

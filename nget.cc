@@ -166,9 +166,9 @@ static void addoptions(void)
 	addoption(NULL,0,0,NULL,NULL);
 };
 static void print_help(void){
-      printf("nget v0.13.2 - nntp command line fetcher\n");
-      printf("Copyright 1999-2001 Matt Mueller <donut@azstarnet.com>\n");
-      printf("\n\
+	printf("nget v0.13.2 - nntp command line fetcher\n");
+	printf("Copyright 1999-2001 Matt Mueller <donut@azstarnet.com>\n");
+	printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
 it under the terms of the GNU General Public License as published by\n\
 the Free Software Foundation; either version 2 of the License, or\n\
@@ -184,53 +184,53 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.\n");
 //	       "-q	quiet mode.  Use twice for total silence\n"
 //);
 	printf("\nUSAGE: nget -g group [-r file [-r file] [-g group [-r ...]]]\n");
-  //this is kinda ugly, but older versions of popt don't have the poptPrintHelp stuff, and it seemed to print out a bit of garbage for me anyway...
-	  for (int i=0;
+	//this is kinda ugly, but older versions of popt don't have the poptPrintHelp stuff, and it seemed to print out a bit of garbage for me anyway...
+	for (int i=0;
 #ifdef HAVE_LIBPOPT
-			  optionsTable[i].longName;
+			optionsTable[i].longName;
 #else
-			  long_options[i].name;
+			long_options[i].name;
 #endif
-			  i++){
-			  printf("-%c  ",
+			i++){
+		printf("-%c  ",
 #ifdef HAVE_LIBPOPT
-					  optionsTable[i].shortName
+				optionsTable[i].shortName
 #else
-					  long_options[i].val
+				long_options[i].val
 #endif
-					  );
-		  if (
+		);
+		if (
 #ifdef HAVE_LIBPOPT
-				  optionsTable[i].argInfo!=POPT_ARG_NONE
+				optionsTable[i].argInfo!=POPT_ARG_NONE
 #else
-				  long_options[i].has_arg
+				long_options[i].has_arg
 #endif
-				  )
-			  printf("--%s=%-*s",
+		)
+			printf("--%s=%-*s",
 #ifdef HAVE_LIBPOPT
-					  optionsTable[i].longName,
+					optionsTable[i].longName,
 #else
-					  long_options[i].name,
+					long_options[i].name,
 #endif
-					  olongestlen-ohelp[i].namelen-1,ohelp[i].arg);
-		  else
-			  printf("--%-*s",
-					  olongestlen,
+					olongestlen-ohelp[i].namelen-1,ohelp[i].arg);
+		else
+			printf("--%-*s",
+					olongestlen,
 #ifdef HAVE_LIBPOPT
-					  optionsTable[i].longName
+					optionsTable[i].longName
 #else
-					  long_options[i].name
+					long_options[i].name
 #endif
-					  );
-			  printf("  %s\n",ohelp[i].desc);
-	  }
+			);
+		printf("  %s\n",ohelp[i].desc);
+	}
 #ifndef HAVE_LIBPOPT
 #ifndef HAVE_GETOPT_LONG
-	  printf("Note: long options not supported by this compile\n");
+	printf("Note: long options not supported by this compile\n");
 #endif
 #endif //!HAVE_LIBPOPT
-	  //cache_dbginfo();
-//	  getchar();
+	//cache_dbginfo();
+//	getchar();
 }
 
 
@@ -296,7 +296,7 @@ struct nget_options {
 				case 'f':gflags&= ~GETFILES_NODUPEFILECHECK;break;
 				case 'F':gflags|= GETFILES_NODUPEFILECHECK;break;
 				default:
-						 throw new c_error(EX_U_FATAL,"unknown dupe flag %c",*opt);
+					throw new c_error(EX_U_FATAL,"unknown dupe flag %c",*opt);
 			}
 			opt++;
 		}
@@ -682,30 +682,30 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 							}
 							break;
 						case 'h':{
-									 if (*loptarg){
-										 options.host=nconfig.getserver(loptarg);
-										 if (options.host==NULL){
-											 options.badskip=2;
-											 printf("invalid host %s (must be configured in .ngetrc first)\n",loptarg);
-											 set_user_error_status();
-										 }
-										 else
-											 options.badskip=0;
-									 }else{
-										 options.host=NULL;
-										 options.badskip=0;
-									 }
-									 nntp.nntp_open(options.host);
-								 }
-								 break;
+								if (*loptarg){
+									options.host=nconfig.getserver(loptarg);
+									if (options.host==NULL){
+										options.badskip=2;
+										printf("invalid host %s (must be configured in .ngetrc first)\n",loptarg);
+										set_user_error_status();
+									}
+									else
+										options.badskip=0;
+								}else{
+									options.host=NULL;
+									options.badskip=0;
+								}
+								nntp.nntp_open(options.host);
+							}
+							break;
 						case -1://end of args.
-								 //								if (!badskip){
-								 //									nntp.nntp_retrieve(!testmode);
-								 //								}
-								 return 0;
+							//								if (!badskip){
+							//									nntp.nntp_retrieve(!testmode);
+							//								}
+							return 0;
 						default:
-								 print_help();
-								 return 1;
+							print_help();
+							return 1;
 					}
 			}
 		}catch(c_error *e){
