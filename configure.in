@@ -191,11 +191,8 @@ AC_ARG_ENABLE(debug,
  	fi
 )
 if test "$nget_debug" = "yes"; then
-dnl	AC_CHECK_HEADERS(nana.h)
-dnl	AC_CHECK_LIB(nana,main)
 	MY_DISABLE_OPT
 else
-dnl	AC_DEFINE(WITHOUT_NANA)
 	AC_DEFINE(NDEBUG)
 fi
 dnl AC_ARG_ENABLE(debug_cache,

@@ -760,10 +760,7 @@ int main(int argc, char ** argv){
 	atexit(print_error_status);
 	try {
 		//	atexit(cache_dbginfo);
-		//string hi="aoeu";
-		//	char *aoeu=new char[5];
 		init_my_timezone();
-		//	nntp.nntp_open(getenv("NNTPSERVER")?:"localhost",NULL,NULL);
 		addoptions();
 		signal(SIGTERM,term_handler);
 		signal(SIGHUP,term_handler);
@@ -805,8 +802,6 @@ int main(int argc, char ** argv){
 			options.qstatus=0;
 			options.group=NULL;
 			options.host=NULL;
-			//		options.user=NULL;
-			//		options.pass=NULL;
 			{
 				c_data_file cfg;
 				c_data_section *galias,*halias,*hpriority;

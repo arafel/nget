@@ -46,21 +46,6 @@
 
 #define CACHE_VERSION "NGET3"
 
-#if 0
-class c_rcount {
-	protected:
-		int rcount;
-	public:
-		void inc_rcount(void){rcount++;}
-		virtual int dec_rcount(void){//needs to be virtual so that it'll destruct the derived classes correctly
-			rcount--;
-			if (rcount<=0) {delete this;return 0;}/*counted object is no longer needed.  return 0 since this no longer exists*/
-			return rcount;
-		}
-		c_rcount():rcount(1){};//initialize rcount to 1, presumably if we are making a new one, we are going to use it for something. :)
-		virtual ~c_rcount(){if (rcount) PDEBUG(DEBUG_MIN,"freeing c_rcount %p while rcount==%i\n",this,rcount);assert(rcount==0);};
-};
-#endif
 
 typedef unsigned long t_id;
 class c_nntp_header {
@@ -96,7 +81,6 @@ class c_nntp_part {
 	public:
 		int partnum;
 		t_nntp_server_articles articles;
-//		ulong articlenum;
 		time_t date;
 //		ulong apxbytes,apxlines;//approximate/hrmy.
 		string messageid;

@@ -26,7 +26,7 @@ void c_data_item::set(const char *val){
 	if (err==val) ierr=-2;
 	else if ((err-val)<(signed)str.size()) ierr=-1;
 	else ierr=0;
-};
+}
 
 
 
@@ -34,7 +34,7 @@ c_data_item *c_data_section::rgetitem(const char *name){
 	data_list::iterator i=data.find(name);
 	if (i!=data.end()) return (*i).second;
 	return NULL;
-};
+}
 int c_data_section::delitem(data_list::iterator i){
 	if (i!=data.end()){
 		delete (*i).second;
@@ -51,7 +51,7 @@ c_data_item *c_data_section::additem(c_data_item *item){
 	}
 	data.insert(data_list::value_type(item->key.c_str(),item));
 	return item;
-};
+}
 void c_data_section::cleanup(void){
 	data_list::iterator i;
 	i=data.begin();
@@ -59,19 +59,7 @@ void c_data_section::cleanup(void){
 		delete (*i).second;
 		++i;
 	}
-	//	    delete data;
-	//	    data=new data_list;
-
-	//	    erase(begin(),end());
-	//	    while (begin()!=end())
-	//		{
-	//		    printf("%x %x\n",begin(),end());
-	//		    if ((*begin()).second)
-	//			  delete((*begin()).second);
-	//		    erase((*begin()).first);
-	//		    erase(begin());
-	//		}
-};
+}
 
 void c_data_section::read_list(c_file *f){
 	char *n,*v,*buf;
@@ -133,13 +121,13 @@ void c_data_section::save_list(int &r,FILE *f,const char *cname,const char *term
 	r--;
 	if (cname)
 		fprintf(f,"%*s}%s",r,"",termin);
-};
+}
 
 
 
 void c_data_file::setfilename(const char * f){
 	filename=f;
-};
+}
 
 
 int c_data_file::read(void){
@@ -156,7 +144,7 @@ int c_data_file::read(void){
 		return 0;
 	}
 	return -1;
-};
+}
 void c_data_file::save(void){
 	if (filename.size()==0)
 		return;
@@ -169,5 +157,5 @@ void c_data_file::save(void){
 		fclose(f);
 		changed=0;
 	}
-};
+}
 

@@ -59,9 +59,6 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 //		int cbuf_size;
 		int authed;
 		c_file_tcp sock;
-//		string host;
-////		const char *user,*pass;
-//		string user, pass;
 		c_server *host;
 		c_server *force_host;
 		ulong curserverid;
