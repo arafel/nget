@@ -8,6 +8,7 @@ nget (0.??) unstable; urgency=low
   * -p and -P can now be specified multiple times without requiring a -G between each. (eg. now you can -G somegroup -p /dir1 -r somefiles -p /dir2 -r someotherstuff)
   * Remove quotes from quoted filenames.
   * Added FAQ.
+  * Fixed some leaks. (mostly unnoticable unless you did lots of -[Gg] on the same instance.)
 
  -- ??
 

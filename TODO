@@ -1,9 +1,12 @@
+* fullxoverthreshold
+
 * exit with non-zero exit status if paths cannot be changed to (and other errors?)
 
 *add option for servers that tell you size of file with 1 eol char (but send message with 2)
 
 reports of huge memory usage (150MB) after running 12 hours (~370 -r's and -p's) (only when "dragging on"?)
 look into using a memory debugger
+(probably was the midinfo leakage, fixed in 0.14)
 
 -p/-P when dir doesn't exist should just ignore all commands until a correct dir is encountered (and set a seperate error code to be exited with)
 
@@ -17,7 +20,6 @@ look into using a memory debugger
 *redo byte lenience?
 *store d/l path in -w files (for -W)
 *make -W switch to read in -w files and decode it all. (also if downloading any, update the file )
-*do servinfo's get leaked?
 
 definataly gonna do:
 *make manpage for ngetlite
