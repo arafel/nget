@@ -63,6 +63,7 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 ////		const char *user,*pass;
 //		string user, pass;
 		c_server *host;
+		c_server *force_host;
 		ulong curserverid;
 		c_group_info::ptr group;
 		int groupselected;//have we selected the group on the server?

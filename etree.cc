@@ -160,6 +160,13 @@ generic_pred * make_pred(const char *optarg){
 	bool esc=0;
 	for(cur=optarg;*cur;cur++){
 		if (esc){
+			switch (*cur){
+				case '"':case '\'':
+					break;
+				default:
+					curpart+='\\';//avoid having to double escape stuff other than quotes.. ?
+					break;
+			}
 			esc=0;
 			curpart+=*cur;
 			continue;

@@ -136,7 +136,7 @@ static void addoptions(void)
 	addoption(NULL,0,0,NULL,NULL);
 };
 static void print_help(void){
-      printf("nget v0.9 - nntp command line fetcher\n");
+      printf("nget v0.10 - nntp command line fetcher\n");
       printf("Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -527,13 +527,13 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 							break;
 						case 'g':
 							if (options.badskip<2){
-								if (options.host==NULL){
+/*								if (options.host==NULL){//######  KLUDGE since host prio stuff isn't finished. TODO: use prios.
 									printf("null host, trying %s\n",getenv("NNTPSERVER"));
 									if (getenv("NNTPSERVER")){
-										options.host=nconfig.getserver(getenv("NNTPSERVER"));//###### TODO: KLUDGE since host prio stuff isn't finished.
+										options.host=nconfig.getserver(getenv("NNTPSERVER"));
 										nntp.nntp_open(options.host);
 									}
-								}
+								}*/
 								options.group=nconfig.getgroup(loptarg);
 //								if (!galias || !(options.group=galias->getitema(loptarg)))
 //									options.group=loptarg;
@@ -563,7 +563,18 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 									 if (!halias || !(options.host=halias->getitema(loptarg)))
 										 options.host=loptarg;
 									 nntp.nntp_open(options.host,options.user,options.pass);*/
-									 options.host=nconfig.getserver(loptarg);
+									 if (*loptarg){
+										 options.host=nconfig.getserver(loptarg);
+										 if (options.host==NULL){
+											 options.badskip=2;
+											 printf("invalid host %s (must be configured in .ngetrc first)\n",loptarg);
+										 }
+										 else
+											 options.badskip=0;
+									 }else{
+										 options.host=NULL;
+										 options.badskip=0;
+									 }
 //									 options.host=halias->getsection(loptarg);
 									 nntp.nntp_open(options.host);
 								 }
@@ -718,6 +729,10 @@ int main(int argc,char ** argv){
 		int n=e->num;
 		printf("main(): caught exception %i: %s",n,e->str);
 		delete e;
+	}catch(exception &e){
+		printf("caught std exception %s\n",e.what());
+	}catch(...){
+		printf("caught unknown exception\n");
 	}
 
 	return 0;

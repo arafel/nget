@@ -44,6 +44,8 @@ curservmult=2.0
   badhost=0.1
  }
  {chocoboprios
+  _level=0.94
+  _glevel=1.5
   host1=1.8
   badhost=1.2
   goodhost=0.9

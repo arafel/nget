@@ -235,7 +235,7 @@ int c_nrange::save(){
 #ifdef HAVE_LIBZ
 				"w"
 #else
-				O_CREAT|O_WRONLY|O_TRUNC,PUBMODE
+				O_CREAT|O_WRONLY|O_TRUNC,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 #endif
 			   )){
 		if (debug){printf("saving nrange: %i contiguous ranges..",rlist.size());fflush(stdout);}

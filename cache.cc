@@ -379,9 +379,9 @@ int c_nntp_cache::additem(c_nntp_header *h){
 	return 1;
 }
 
-void c_nntp_cache::getxrange(c_nntp_server_info *servinfo,ulong newhigh, c_nrange *range){
+void c_nntp_cache::getxrange(c_nntp_server_info *servinfo,ulong newlow,ulong newhigh, c_nrange *range){
 	range->clear();
-	range->insert(servinfo->low,newhigh);
+	range->insert(newlow<servinfo->low?newlow:servinfo->low,newhigh);
 	t_nntp_files::iterator i;
 	c_nntp_file::ptr nf;
 	t_nntp_file_parts::iterator pi;

@@ -281,6 +281,7 @@ void c_prot_nntp::nntp_dogroup(int getheaders){
 //	printf("%i, %i, %i\n",num,low,high);
 	if (getheaders){
 		c_nntp_server_info* servinfo=gcache->getserverinfo(curserverid);
+		assert(servinfo);
 		if (low>servinfo->low)
 			gcache->flushlow(servinfo,low,midinfo);
 /*		if (low>0){
@@ -291,10 +292,10 @@ void c_prot_nntp::nntp_dogroup(int getheaders){
 			}
 //			else
 //				l=0;
-		}*/ //TODO: fixup grange (midinfo.. check based upon cfg'd date?)
+		}*/
 		if (host->fullxover){
 			c_nrange r;
-			gcache->getxrange(servinfo,high,&r);
+			gcache->getxrange(servinfo,low,high,&r);
 			doxover(&r);
 		}else{
 //			c_nrange r;
@@ -320,8 +321,40 @@ void c_prot_nntp::nntp_group(c_group_info::ptr ngroup, int getheaders){
 	midinfo=new c_mid_info((nghome + group->group + "_midinfo"));
 	gcache=new c_nntp_cache(nghome,group->group);
 	groupselected=0;
-	if (getheaders)
-		nntp_dogroup(getheaders);
+	if (getheaders){
+		if (force_host){
+			if (host!=force_host){
+				nntp_close();
+				host=force_host;
+			}
+//			assert(host);
+			nntp_dogroup(getheaders);
+		}else{
+			c_server* firstserv=host;
+			c_server* s;
+			if (firstserv && (group->priogrouping->getserverpriority(firstserv->serverid) >= group->priogrouping->defglevel)){
+				PDEBUG(DEBUG_MED,"nntp_group: firstserv(%lu) %f>=%f",firstserv->serverid,group->priogrouping->getserverpriority(firstserv->serverid),group->priogrouping->defglevel);
+				nntp_dogroup(getheaders);//if the serv we currently are on has a high enough prio, do it first.
+			}
+//			group->priogrouping->defglevel;
+			t_server_list::iterator sli=nconfig.serv.begin();
+			for (;sli!=nconfig.serv.end();++sli){
+				s=(*sli).second;
+				assert(s);
+				if (firstserv && s->serverid==firstserv->serverid){
+					PDEBUG(DEBUG_MED,"nntp_group: serv(%lu) already done",s->serverid);
+					continue;//we already did this one first, skip it.
+				}
+				PDEBUG(DEBUG_MED,"nntp_group: serv(%lu) %f>=%f",s->serverid,group->priogrouping->getserverpriority(s->serverid),group->priogrouping->defglevel);
+				if (group->priogrouping->getserverpriority(s->serverid) >= group->priogrouping->defglevel){
+					curserverid=s->serverid;
+					host=s;
+					nntp_close();
+					nntp_dogroup(getheaders);
+				}
+			}
+		}
+	}
 }
 
 inline void arinfo::print_retrieving_articles(time_t curtime, quinfo*tot){
@@ -411,6 +444,7 @@ int c_prot_nntp::nntp_doarticle(c_nntp_part *part,arinfo*ari,quinfo*toti,char *f
 			nntp_close();
 			curserverid=sa->serverid;
 			host=nconfig.serv[curserverid];
+			force_host=NULL;
 		}
 		ari->anum=sa->articlenum;
 		ari->bytestot=sa->bytes;
@@ -813,6 +847,10 @@ void c_prot_nntp::nntp_doauth(const char *user, const char *pass){
 }
 
 void c_prot_nntp::nntp_open(c_server *h){
+	if (h)
+		force_host=h;
+	else
+		force_host=NULL;
 	if (h!=host){
 		nntp_close();
 		host=h;
@@ -892,6 +930,7 @@ c_prot_nntp::c_prot_nntp(void){
 	curserverid=0;
 	host=NULL;
 	midinfo=NULL;
+	force_host=NULL;
 }
 c_prot_nntp::~c_prot_nntp(void){
 //	printf("nntp destructing\n");

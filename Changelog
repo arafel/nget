@@ -1,3 +1,16 @@
+nget (0.10) unstable; urgency=low
+
+  * Added _level and _glevel group prio options, and made -g select hosts
+    automatically.
+  * Fixed dual \ problem in regexes. (Now you only need dual \'s for quote
+    chars, rather than all chars. (once for the shell, once for nget))
+  * Fixed header retrieval for new groups with fullxover=1. (only failed on 
+    some servers)
+  * Added better error handling when selecting invalid host.
+  * Fixed nrange.cc compile problem in without-zlib build.
+
+ -- Matt Mueller <donut@azstarnet.com>  Tue, 18 Apr 2000 15:55:53 -0700
+
 nget (0.9) unstable; urgency=low
 
   * fixed command line arg problems when built with getopt rather that libpopt.

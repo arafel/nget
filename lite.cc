@@ -35,7 +35,7 @@ int curfd=-1;
 c_prot_nntp nntp;
 
 void showhelp(void){
-	printf("ngetlite v0.9 - 'lite' nntp fetcher for nget\n"
+	printf("ngetlite v0.10 - 'lite' nntp fetcher for nget\n"
 			"Copyright 2000 Matt Mueller <donut@azstarnet.com>\n");
 	printf("USAGE: ngetlite <listfiles ...>\n");
 	printf("listfiles are generated with nget and the -w <listfile> param\n");

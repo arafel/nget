@@ -1,4 +1,4 @@
-.TH nget 1 "13 Apr 2000"
+.TH nget 1 "18 Apr 2000"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -12,9 +12,13 @@ contained within.  Multipart messages are automatically pieced together.
 .IP "-q/--quiet"
 Disable printing of merely informative messages.  Errors will still be printed.
 .IP "-h/--host host"
-NNTP host to use for subsequent commands.  Must be configured in .ngetrc.
+NNTP host to use for subsequent -g commands.  Must be configured in .ngetrc.
+Can reset to standard auto-choosing method with -h ""
 .IP "-g/--group group"
-Newsgroup to use for subsequent commands.
+Newsgroup to use for subsequent commands.  If a host has been specified before
+with -h, it will retrieve headers only from that host.  Otherwise it will
+retrieve headers for all hosts above _glevel (see configuration section for
+more info on priorities.)
 .IP "-G/--quickgroup group"
 Like --group, but does not retrieve new headers.
 .IP "-r/--retrieve regex"
@@ -112,7 +116,8 @@ Host configuration is done in the halias section, with a subsection for each
 host containing its address, unique id, and optionally user/pass/fullxover
 items.  The "id" field must be unique, and should not be changed after you have
 used it (since it could leave leftovers in your cache files, unless you delete
-them first).
+them first).  The "id" must be greater than 0 and less than ULONG_MAX. (usually
+4294967295).  In other words, don't use id 0.
 .br
 For example, the following host section defines a single host "host1", with
 nntp authentication for user "bob", password "something", and the fullxover
@@ -142,9 +147,11 @@ Multiserver priorities are defined in the hpriority section.  Multiple priority
 groups can be made, and different newsgroups can be configured to use their own
 priority grouping, or they will default to the "default" group.  The hpriority
 section contains a subsection for each priority group, with data items of
-server=prio-multiplier, and the special item _level=float(_level is unused in
-nget 0.8, but reserved for future use).  The priority group
-"trustsizes" also has special meaning, and is used to choose which servers
+server=prio-multiplier, and the special items _level=float and _glevel=float.
+_level sets the priority level assigned to any host not listed in the group,
+and _glevel sets the required priority needed for -g to automatically use that
+host.  Both _level and _glevel default to 1.0 if not specified.
+The priority group "trustsizes" also has special meaning, and is used to choose which servers
 reporting of article line/byte counts to trust when reporting to the user.
 When retrieving articles, nget will multiply the current servers priority by
 the global setting "curservmult" (default 2.0), this can be used to avoid
@@ -152,13 +159,18 @@ excesive server switching.  (set it to 1.0 if you want to disable it).
 .br
 For example, the following section defines the default priority group and the
 trustsizes priority group.  If all hosts have a certain article, goodhost will
-be most likely to be chosen, and badhost least likely.
+be most likely to be chosen, and badhost least likely.  It also sets the
+default proirity level to 1.01, meaning any hosts not listed in this group will have a
+priority of 1.01.  When using -g without first specifying a host, only those
+with prios 1.2 or above will be selected.
 .br
 .B {hpriority
 .br
 .B  {default
 .br
 .B   _level=1.01
+.br
+.B   _glevel=1.2
 .br
 .B   host1=1.9
 .br

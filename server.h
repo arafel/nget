@@ -57,6 +57,7 @@ typedef map<ulong,c_server_priority*, less<ulong> > t_server_priority_grouping;
 class c_server_priority_grouping {
 	public:
 		string alias;
+		float defglevel;
 		float deflevel;
 //		vector<c_server *> servers;
 		t_server_priority_grouping priorities;
@@ -65,9 +66,9 @@ class c_server_priority_grouping {
 			if (spgi!=priorities.end())
 				return (*spgi).second->baseprio;
 			else
-				return 1.0;
+				return deflevel;
 		}
-		c_server_priority_grouping(string alia):alias(alia){deflevel=1.0;}
+		c_server_priority_grouping(string alia):alias(alia){defglevel=1.0;deflevel=1.0;}
 		~c_server_priority_grouping(){
 			t_server_priority_grouping::iterator i;
 			for (i=priorities.begin(); i!=priorities.end(); ++i)
@@ -178,6 +179,8 @@ class c_nget_config {
 						di=(*dlj).second;
 						if (di->key=="_level"){
 							pgrouping->deflevel=atof(di->str.c_str());
+						}else if (di->key=="_glevel"){
+							pgrouping->defglevel=atof(di->str.c_str());
 						}else{
 							c_server_priority *sprio=new c_server_priority(getserver(di->key),atof(di->str.c_str()));
 							pgrouping->priorities.insert(t_server_priority_grouping::value_type(sprio->server->serverid,sprio));
