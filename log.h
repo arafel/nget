@@ -1,6 +1,6 @@
 /*
     log.* - debug/error logging and exception defines
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,8 @@ extern int quiet;
 #define EX_U_WARN 1
 //application errors
 #define EX_A_FATAL 6
+//path.
+#define EX_PATH_FATAL 7
 
 #define EX_FATALS 3
 

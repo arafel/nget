@@ -218,7 +218,14 @@ typedef hash_multimap<t_id, c_nntp_file::ptr, hash<t_id>, equal_to<t_id> > t_nnt
 typedef multimap<t_id, c_nntp_file::ptr, less<t_id> > t_nntp_files;
 #endif
 //typedef map<ulong,c_nntp_file*,less<ulong> > t_nntp_files_u;
-typedef multimap<time_t,c_nntp_file::ptr,less<ulong> > t_nntp_files_u;
+class c_nntp_file_retr : public c_refcounted<c_nntp_file_retr>{
+	public:
+		string path;
+		string temppath;
+		c_nntp_file::ptr file;
+		c_nntp_file_retr(const string &p, const string &tp, const c_nntp_file::ptr &f):path(p),temppath(tp),file(f){}
+};
+typedef multimap<time_t,c_nntp_file_retr::ptr,less<ulong> > t_nntp_files_u;
 class c_nntp_files_u {
 	public:
 		ulong bytes,lines;
@@ -331,7 +338,7 @@ class c_nntp_cache : public c_refcounted<c_nntp_cache>{
 		void getxrange(c_nntp_server_info *servinfo, ulong newlow, ulong newhigh, c_nrange *range);
 		//c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_nrange *grange,const char *match, unsigned long linelimit,int flags);
 		//c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_nrange *grange,nntp_pred *pred,int flags);
-		c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_mid_info *midinfo,generic_pred *pred,int flags);
+		c_nntp_files_u* getfiles(const string &path, const string &temppath, c_nntp_files_u * fc,c_mid_info *midinfo,generic_pred *pred,int flags);
 		c_nntp_cache(string path,c_group_info::ptr group);
 		virtual ~c_nntp_cache();
 };

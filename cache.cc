@@ -24,6 +24,7 @@
 #include <memory>
 #include <glob.h>
 #include <errno.h>
+#include <dirent.h>
 #include "nget.h"
 #include "mylockfile.h"
 
@@ -159,37 +160,22 @@ class file_match {
 		file_match(const char *m,int a):reg(m,a){};
 };
 typedef slist<file_match *> filematchlist;
-//typedef slist<char *> filematchlist;
-typedef slist<ulong> longlist;//TODO: kill longlist, not used
 
 #define ALNUM "a-zA-Z0-9"
-void buildflist(filematchlist **l,longlist **a){
-	glob_t globbuf;
-	globbuf.gl_offs = 0;
-	glob("*",0,NULL,&globbuf);
+void buildflist(const string &path, filematchlist **l){
+	DIR *dir=opendir(path.c_str());
+	struct dirent *de;
+	if (!dir)
+		throw new c_error(EX_PATH_FATAL,"opendir: %s(%i)",strerror(errno),errno);
 	*l=NULL;
-	*a=NULL;
-	if (globbuf.gl_pathc<=0)return;
 	*l=new filematchlist;
-//	char *s;
 	struct stat stbuf;
-//	c_regex *s;
 	file_match *fm;
-//	c_regex_nosub amatch("^[0-9]+\\.txt",REG_EXTENDED|REG_ICASE|REG_NOSUB);
 	char buf[1024],*cp;
 	int sl;
-	for (unsigned int i=0;i<globbuf.gl_pathc;i++){
-/*		asprintf(&s,"*[!"ALNUM"]%s[!"ALNUM"]*",globbuf.gl_pathv[i]);
-		(*l)->push_front(s);
-		asprintf(&s,"*[!"ALNUM"]%s",globbuf.gl_pathv[i]);
-		(*l)->push_front(s);
-		asprintf(&s,"%s[!"ALNUM"]*",globbuf.gl_pathv[i]);*/
-		//no point in using fnmatch.. need to do this gross multi string per file kludge, and...
-		//sprintf(buf,"(^|[^[:alnum:]]+)%s([^[:alnum:]]+|$)",globbuf.gl_pathv[i]);//this is about the same speed as the 3 fnmatchs
-//		sl=sprintf(buf,"\\<%s\\>",globbuf.gl_pathv[i]);//this is much faster
-//		cp=buf+2;
-//		while ((cp=strpbrk(cp,"()|[]"))&&cp-buf<sl-2)
-//			*cp='.';//filter out some special chars.. really should just escape them, but thats a bit harder
+	while ((de=readdir(dir))) {
+		if (strcmp(de->d_name,"..")==0) continue;
+		if (strcmp(de->d_name,".")==0) continue;
 		sl=0;
 		buf[sl++]='\\';
 #ifdef HAVE_PCREPOSIX_H
@@ -197,7 +183,7 @@ void buildflist(filematchlist **l,longlist **a){
 #else
 		buf[sl++]='<';//match beginning of word
 #endif
-		cp=globbuf.gl_pathv[i];
+		cp=de->d_name;
 		while (*cp){
 			if (strchr("{}()|[]\\.+*^$",*cp))
 				buf[sl++]='\\';//escape special chars
@@ -211,37 +197,21 @@ void buildflist(filematchlist **l,longlist **a){
 		buf[sl++]='>';//match end of word
 #endif
 		buf[sl++]=0;
-//		printf("%s\n",buf);//this is much faster
-//		s=new c_regex(buf,REG_EXTENDED|REG_ICASE|REG_NOSUB);
 		fm=new file_match(buf,REG_EXTENDED|REG_ICASE|REG_NOSUB);
-		if(stat(globbuf.gl_pathv[i],&stbuf)==0)
+		if (stat((path+'/'+de->d_name).c_str(), &stbuf)==0)
 			fm->size=stbuf.st_size;
 		else
 			fm->size=0;
 		(*l)->push_front(fm);
-/*		if (!amatch.match(globbuf.gl_pathv[i])){
-			if (*a==NULL)
-				*a=new longlist;
-			(*a)->push_front(atoul(globbuf.gl_pathv[i]));
-		}*/
 	}
-	globfree(&globbuf);
-//	return l;
+	closedir(dir);
 }
 
-//gnu extension.. if its not available, just compare normally.
-//#ifndef FNM_CASEFOLD
-//#define FNM_CASEFOLD 0
-//#endif
-
-int checkhavefile(filematchlist *fl,longlist *al,const char *f,string messageid,ulong bytes){
+int checkhavefile(filematchlist *fl,const char *f,string messageid,ulong bytes){
 	filematchlist::iterator curl;
-	//longlist::iterator cura;
 	if (fl){
 		file_match *fm;
 		for (curl=fl->begin();curl!=fl->end();++curl){
-			//		printf("fnmatch(%s,%s,%i)=",*curl,f,FNM_CASEFOLD);
-//			if (fnmatch(*curl,f,FNM_CASEFOLD)==0){
 			fm=*curl;
 			if ((fm->reg.match(f)==0/* || fm->reg.match((messageid+".txt").c_str())==0*/) && fm->size*2>bytes && fm->size<bytes){//TODO: handle text files saved.
 				//			printf("0\n");
@@ -255,15 +225,14 @@ int checkhavefile(filematchlist *fl,longlist *al,const char *f,string messageid,
 }
 
 
-c_nntp_files_u* c_nntp_cache::getfiles(c_nntp_files_u * fc,c_mid_info *midinfo,generic_pred *pred,int flags){
+c_nntp_files_u* c_nntp_cache::getfiles(const string &path, const string &temppath, c_nntp_files_u * fc,c_mid_info *midinfo,generic_pred *pred,int flags){
 //c_nntp_files_u* c_nntp_cache::getfiles(c_nntp_files_u * fc,c_nrange *grange,const char *match, unsigned long linelimit,int flags){
 	if (fc==NULL) fc=new c_nntp_files_u;
 	//c_regex hreg(match,REG_EXTENDED + ((flags&GETFILES_CASESENSITIVE)?0:REG_ICASE));
 
 	filematchlist *flist=NULL;
-	longlist *alist=NULL;
 	if (!(flags&GETFILES_NODUPEFILECHECK))
-		buildflist(&flist,&alist);
+		buildflist(path, &flist);
 
 	t_nntp_files::const_iterator fi;
 	pair<t_nntp_files_u::const_iterator,t_nntp_files_u::const_iterator> firange;
@@ -281,16 +250,17 @@ c_nntp_files_u* c_nntp_cache::getfiles(c_nntp_files_u * fc,c_mid_info *midinfo,g
 //				continue;
 			firange=fc->files.equal_range(f->badate());
 			for (;firange.first!=firange.second;++firange.first){
-				if ((*firange.first).second->bamid()==f->bamid())
+				if ((*firange.first).second->file->bamid()==f->bamid())
 //					continue;
 					goto file_match_loop_end;//can't continue out of multiple loops
 			}
 
-			if (!(flags&GETFILES_NODUPEFILECHECK) && checkhavefile(flist,alist,f->subject.c_str(),f->bamid(),f->bytes()))
+			if (!(flags&GETFILES_NODUPEFILECHECK) && checkhavefile(flist,f->subject.c_str(),f->bamid(),f->bytes()))
 				continue;
 //			f->inc_rcount();
 //			fc->files[banum]=f;
-			fc->files.insert(t_nntp_files_u::value_type(f->badate(),f));
+			//fc->files.insert(t_nntp_files_u::value_type(f->badate(),f));
+			fc->files.insert(t_nntp_files_u::value_type(f->badate(), new c_nntp_file_retr(path,temppath,f)));
 			fc->lines+=f->lines();
 			fc->bytes+=f->bytes();
 		}
@@ -302,7 +272,6 @@ file_match_loop_end: ;
 			delete *curl;
 		delete flist;
 	}
-	if (alist)delete alist;
 //	if (!nm){
 //		delete fc;fc=NULL;
 //	}

@@ -593,6 +593,27 @@ int uu_busy_callback(void *v,uuprogress *p){
 	if (!quiet) {printf(".");fflush(stdout);}
 	return 0;
 };
+int fname_filter(char *buf, const char *path, char *fn){
+	char *fnp=fn;
+	int slen=strlen(fnp);
+	if (*fnp=='"') {
+		fnp++;
+		slen--;
+	}
+	if (fnp[slen-1]=='"')
+		slen--;
+	if (path)
+		return sprintf(buf,"%s/%.*s",path,slen,fnp);
+	else
+		return sprintf(buf,"%.*s",slen,fnp);
+}
+char * uu_fname_filter(void *v,char *fn){
+	const string *s=(const string *)v;
+	static char buf[PATH_MAX];
+	fname_filter(buf,s->c_str(),fn);
+	PDEBUG(DEBUG_MED,"uu_fname_filter: filtered %s to %s",fn,buf);
+	return buf;
+}
 /*void c_prot_nntp::nntp_queueretrieve(const char *match, ulong linelimit, int getflags){
 	//if (!(filec=gcache->getfiles(filec,grange,match,linelimit,getflags)))
 	c_regex_nosub *reg=new c_regex_nosub(match,REG_EXTENDED + ((getflags&GETFILES_CASESENSITIVE)?0:REG_ICASE));
@@ -615,13 +636,14 @@ int uu_busy_callback(void *v,uuprogress *p){
 		throw new c_error(EX_U_WARN,"nntp_retrieve: no match for %s",match);
 }*/
 
-void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, const string &writelite){
+void c_prot_nntp::nntp_retrieve(int doit,int options, const string &writelite){
 	if (!(filec) || filec->files.empty())
 		return;
 
 	t_nntp_files_u::iterator curf;
 	//c_nntp_file *f;
 	c_nntp_file::ptr f;
+	c_nntp_file_retr::ptr fr;
 
 	//hmm, maybe not now. //well, now we need to keep it around again, so we can set the read flag.  At least with the new cache implementation its not quite such a memory hog.
 //	if (gcache){
@@ -633,7 +655,8 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 		char tconvbuf[TCONV_DEF_BUF_LEN];
 		c_nntp_part *p;
 		for(curf = filec->files.begin();curf!=filec->files.end();++curf){
-			f=(*curf).second;
+			fr=(*curf).second;
+			f=fr->file;
 			p=(*f->parts.begin()).second;
 			tconv(tconvbuf,TCONV_DEF_BUF_LEN,&p->date);
 			printf("%i/%i\t%lil\t%s\t%s\t%s\t%s\n",f->have,f->req,f->lines(),tconvbuf,f->subject.c_str(),f->author.c_str(),p->messageid.c_str());
@@ -674,7 +697,8 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 				filec->bytes=qtotinfo.bytesleft;//update bytes in case we have an exception and need to restart.
 			}
 			lastf=curf;
-			f=(*curf).second;
+			fr=(*curf).second;
+			f=fr->file;
 //			bp=f->parts.begin()->second;
 			list<char *> fnbuf;
 			list<char *>::iterator fncurb;
@@ -694,7 +718,7 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 					const char *usepath;
 					if (!writelite.empty())
 						usepath="";
-					else usepath=temppath.c_str();
+					else usepath=fr->temppath.c_str();
 					if (options & GETFILES_TEMPSHORTNAMES)
 						asprintf(&fn,"%s%lx.%03i",usepath,group_id+f->fileid,(*curp).first);
 					else
@@ -742,6 +766,7 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 				UUSetOption(UUOPT_USETEXT,1,NULL);//######hmmm...
 				UUSetMsgCallback(&derr,uu_msg_callback);
 				UUSetBusyCallback(NULL,uu_busy_callback,1000);
+				UUSetFNameFilter(&fr->path,uu_fname_filter);
 				for(fncurb = fnbuf.begin();fncurb!=fnbuf.end();++fncurb){
 					UULoadFile((*fncurb),NULL,0);
 				}
@@ -765,32 +790,32 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 					r=UUDecodeFile(uul,NULL);
 					if (r==UURET_EXISTS){
 						derr--; //HACK since this error will also cause a uu_warning thingy, which will incr derr, but we don't want that.
-						char *nfn;
-						//asprintf(&nfn,"%s.%lu.%i",uul->filename,f->banum(),rand());
-						asprintf(&nfn,"%s.%lu.%i",uul->filename,f->badate(),rand());
+						//all the following ugliness with fname_filter is due to uulib forgetting that we already filtered the name and giving us the original name instead.
+						char nfn[PATH_MAX];
+						sprintf(nfn+fname_filter(nfn, NULL, uul->filename), ".%lu.%i", f->badate(),rand());
 #ifdef	USE_FILECOMPARE	// We have a duplicate file name
 						// memorize the old file name
-						char	*old_fn;
-						asprintf(&old_fn,"%s",uul->filename);
+						char old_fnp[PATH_MAX];
+						char *nfnp;
+						fname_filter(old_fnp, fr->path.c_str(), uul->filename);
 						// Generate a new filename to use
+						asprintf(&nfnp,"%s/%s",fr->path.c_str(),nfn);
 						UURenameFile(uul,nfn);
 						r=UUDecodeFile(uul,NULL);
 						// did it decode correctly?
 						if (r == UURET_OK){
 							// if identical, delete the one we just downloaded
-							if (filecompare(old_fn,nfn) > 0){
+							if (filecompare(old_fnp,nfnp) > 0){
 								printf("Duplicate File Removed %s\n", nfn);
-								unlink(nfn);
+								unlink(nfnp);
 							}
 						}
 						// cleanup
-						free(old_fn);
-
+						free(nfnp);
 #else	/* USE_FILECOMPARE */				// the orginal code
 						UURenameFile(uul,nfn);
 						r=UUDecodeFile(uul,NULL);
 #endif	/* USE_FILECOMPARE */
-						free(nfn);
 					}
 					if (r!=UURET_OK){
 						derr++;

@@ -269,6 +269,8 @@ struct nget_options {
 
 	nget_options(void){
 		do_get_path(startpath);
+		get_path();
+		get_temppath();
 	}
 	nget_options(nget_options &o):maxretry(o.maxretry),retrydelay(o.retrydelay),linelimit(o.linelimit),gflags(o.gflags),testmode(o.testmode),badskip(o.badskip),qstatus(o.qstatus),makedirs(o.makedirs),group(o.group),host(o.host)/*,user(o.user),pass(o.pass)*/,path(o.path),startpath(o.path),temppath(o.temppath),writelite(o.writelite){
 /*		if (o.path){
@@ -432,7 +434,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 						}else{
 							generic_pred *p=make_pred(loptarg);
 							if (p){
-								nntp.filec=nntp.gcache->getfiles(nntp.filec,nntp.midinfo,p,options.gflags);
+								nntp.filec=nntp.gcache->getfiles(options.path,options.temppath,nntp.filec,nntp.midinfo,p,options.gflags);
 								delete p;
 								options.qstatus=1;
 							}
@@ -472,7 +474,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 							generic_pred *p=make_pred(s);
 							free(s);
 							if (p){
-								nntp.filec=nntp.gcache->getfiles(nntp.filec,nntp.midinfo,p,options.gflags);
+								nntp.filec=nntp.gcache->getfiles(options.path,options.temppath,nntp.filec,nntp.midinfo,p,options.gflags);
 								delete p;
 								options.qstatus=1;
 							}
@@ -543,8 +545,12 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 				case 'P':
 					if (!maybe_mkdir_chdir(loptarg,options.makedirs)){
 						options.get_temppath();
-						chdir(options.path.c_str());
 						printf("temppath:%s\n",options.temppath.c_str());
+						if (chdir(options.startpath.c_str())){
+							printf("could not change to startpath: %s\n",options.startpath.c_str());
+							set_path_error_status();
+							return -1;
+						}
 					}else{
 						printf("could not change temppath to %s\n",loptarg);
 						set_path_error_status();
@@ -552,16 +558,19 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 					}
 					break;
 				case 'p':
-					{
-						int i=0;
-						if (!chdir(options.startpath.c_str()) && (i=1) && !maybe_mkdir_chdir(loptarg,options.makedirs)){
-							options.get_path();
-							printf("path:%s\n",options.path.c_str());
-						}else{
-							printf("could not change to %s\n",i==0?options.startpath.c_str():loptarg);
+					if (!maybe_mkdir_chdir(loptarg,options.makedirs)){
+						options.get_path();
+						options.get_temppath();
+						printf("(temp)path:%s\n",options.path.c_str());
+						if (chdir(options.startpath.c_str())){
+							printf("could not change to startpath: %s\n",options.startpath.c_str());
 							set_path_error_status();
 							return -1;
 						}
+					}else{
+						printf("could not change to %s\n",loptarg);
+						set_path_error_status();
+						return -1;
 					}
 					break;
 				case 'F':
@@ -590,7 +599,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 					return 1;
 				default:
 					if (options.qstatus){
-						if (!options.badskip) nntp.nntp_retrieve(!options.testmode,options.gflags,options.temppath,options.writelite);
+						if (!options.badskip) nntp.nntp_retrieve(!options.testmode,options.gflags,options.writelite);
 						options.qstatus=0;
 					}
 					switch (c){
@@ -716,7 +725,10 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 					redo=0;redone=0;
 				}
 			}else{
-				if (n==EX_A_FATAL){
+				if (n==EX_PATH_FATAL){
+					set_path_error_status();
+					return -1;
+				}else if (n==EX_A_FATAL){
 					printf(" (fatal application error, exiting..)\n");
 					set_fatal_error_status();
 					exit(errflags);
