@@ -91,42 +91,42 @@ void init_my_timezone(void){
 #endif
 
 int doopen(int &handle,const char * name,int access,int mode=0) {
-   if ((handle=open(name,access,mode))==-1){
+	if ((handle=open(name,access,mode))==-1){
 //      if (domiscquiet)
 //      domiscquiet--;
 //      else
-      PERROR("Error opening %s: %s",name,strerror(errno));
-      return -1;
-   }
-   else return 0;
+		PERROR("Error opening %s: %s",name,strerror(errno));
+		return -1;
+	}
+	else return 0;
 }
 
 int dofopen(FILE * &f,const char * name,const char * mode,int domiscquiet=0) {
 //   FILE *f;
-   if ((f=fopen(name,mode))==NULL){
-      if (!domiscquiet)
-        PERROR("Error opening %s: %s",name,strerror(errno));
-      return -1;
-   }
-   return 0;
+	if ((f=fopen(name,mode))==NULL){
+		if (!domiscquiet)
+			PERROR("Error opening %s: %s",name,strerror(errno));
+		return -1;
+	}
+	return 0;
 }
 
 int dobackup(const char * name){
 	//###### TODO: use crope/basic_string?
 //   char buf[FTP_PATH_LEN];
-   char buf[256];
-   assert(strlen(name)+1<sizeof(buf));
-   strcpy(buf,name);
-   strcat(buf,"~");
-   return rename(name,buf);
+	char buf[256];
+	assert(strlen(name)+1<sizeof(buf));
+	strcpy(buf,name);
+	strcat(buf,"~");
+	return rename(name,buf);
 }
 
 const char * getfname(const char * src){
-   int i=strlen(src)-1;
-   if (i<0) i=0;
-   while ((i>0)&&(src[i-1]!='/'))
-     i--;
-   return &src[i];
+	int i=strlen(src)-1;
+	if (i<0) i=0;
+	while ((i>0)&&(src[i-1]!='/'))
+		i--;
+	return &src[i];
 }
 
 
@@ -198,9 +198,9 @@ size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%m
 //	static char timestr[80];
 	struct tm *time_now;
 	if (local)
-	     time_now = localtime(curtime);
+		time_now = localtime(curtime);
 	else
-	     time_now = gmtime(curtime);
+		time_now = gmtime(curtime);
 	return strftime(timestr,max,formatstr,time_now);
 //	return timestr;
 }
@@ -226,18 +226,18 @@ const char * strerror(int err){
 // threadsafe.
 char * goodstrtok(char **cur, char sep){
 //   static char * cur=NULL;
-   char * tmp, *old;
+	char * tmp, *old;
 //   if (buf)
 //     cur=buf;
-   if (!*cur) return NULL;
-   old=*cur;
-   if ((tmp=strchr(*cur,sep))==NULL){
-      *cur=NULL;
-      return old;
-   }
-   tmp[0]=0;
-   *cur=tmp+1;
-   return old;
+	if (!*cur) return NULL;
+	old=*cur;
+	if ((tmp=strchr(*cur,sep))==NULL){
+		*cur=NULL;
+		return old;
+	}
+	tmp[0]=0;
+	*cur=tmp+1;
+	return old;
 }
 strtoker::strtoker(int num,char tok){
 	toks=new char*[num];
@@ -257,14 +257,14 @@ int strtoker::tok(char *str){
 
 char txt_exts[]=".txt.cpp.c.cc.h.pas.htm.html.pl.tcl";
 int is_text(const char * f){
-      char *t,*s;
-      t=strrchr(f,'.');
-      if (t==NULL)return 0;
+	char *t,*s;
+	t=strrchr(f,'.');
+	if (t==NULL)return 0;
 //   if ((s=strstr(cfg.txt_exts,t))){
 	if ((s=strstr(txt_exts,t))){
 		switch (s[strlen(t)]){
-		  case '.':case 0:
-			return 1;
+			case '.':case 0:
+				return 1;
 		}
 	}
 	return 0;
@@ -273,31 +273,31 @@ int is_text(const char * f){
 //MDTM INDEX.txt
 //213 19951006235406
 time_t decode_mdtm(const char * cbuf){
-   char buf[5];
-   struct tm tblock;
-   memset(&tblock,0,sizeof(struct tm));
+	char buf[5];
+	struct tm tblock;
+	memset(&tblock,0,sizeof(struct tm));
 
-   buf[4]=0;
-   strncpy(buf,cbuf,4);
-   tblock.tm_year=atoi(buf)-1900;
+	buf[4]=0;
+	strncpy(buf,cbuf,4);
+	tblock.tm_year=atoi(buf)-1900;
 
-   buf[2]=0;
-   strncpy(buf,cbuf+4,2);
-   tblock.tm_mon=atoi(buf)-1;
+	buf[2]=0;
+	strncpy(buf,cbuf+4,2);
+	tblock.tm_mon=atoi(buf)-1;
 
-   strncpy(buf,cbuf+6,2);
-   tblock.tm_mday=atoi(buf);
+	strncpy(buf,cbuf+6,2);
+	tblock.tm_mday=atoi(buf);
 
-   strncpy(buf,cbuf+8,2);
-   tblock.tm_hour=atoi(buf);
+	strncpy(buf,cbuf+8,2);
+	tblock.tm_hour=atoi(buf);
 
-   strncpy(buf,cbuf+10,2);
-   tblock.tm_min=atoi(buf);
+	strncpy(buf,cbuf+10,2);
+	tblock.tm_min=atoi(buf);
 
-   strncpy(buf,cbuf+12,2);
-   tblock.tm_sec=atoi(buf);
+	strncpy(buf,cbuf+12,2);
+	tblock.tm_sec=atoi(buf);
 
-   return mktime(&tblock)-my_timezone;
+	return mktime(&tblock)-my_timezone;
 }
 
 char *text_month[13]={"Jan", "Feb", "Mar", "Apr",
@@ -308,7 +308,7 @@ char *text_month[13]={"Jan", "Feb", "Mar", "Apr",
 int decode_textmonth(const char * buf){
 	for (int i=0;i<12;i++){
 		if (!strncasecmp(text_month[i],buf,3))
-		     return i;
+			return i;
 	}
 	return -1;
 }
@@ -395,19 +395,19 @@ time_t decode_textdate(const char * cbuf){
 		if (rsubs.subs(3)[2]==':'){
 			struct tm lt;
 #ifdef CURTIME
-            localtime_r(&CURTIME,&lt);
+			localtime_r(&CURTIME,&lt);
 #else
 			time_t curtime;
 			time(&curtime);
-            localtime_r(&curtime,&lt);
+			localtime_r(&curtime,&lt);
 #endif
 			tblock.tm_hour=atoi(rsubs.subs(3));
 			tblock.tm_min=atoi(rsubs.subs(3)+3);
 
 			if (lt.tm_mon>=tblock.tm_mon)
-			     tblock.tm_year=lt.tm_year;
+				tblock.tm_year=lt.tm_year;
 			else
-			     tblock.tm_year=lt.tm_year-1;
+				tblock.tm_year=lt.tm_year-1;
 		}else{
 			yearlen=rsubs.sublen(3);
 			tblock.tm_year=atoi(rsubs.subs(3));
@@ -465,24 +465,24 @@ time_t decode_textdate(const char * cbuf){
 		if (cbuf[4]==' ')
 			tblock.tm_mday=atoi(cbuf+5);
 		else
-		     tblock.tm_mday=atoi(cbuf+4);
+			tblock.tm_mday=atoi(cbuf+4);
 		if (cbuf[9]==':'){
 			struct tm lt;
 
 #ifdef CURTIME
-            localtime_r(&CURTIME,&lt);
+			localtime_r(&CURTIME,&lt);
 #else
 			time_t curtime;
 			time(&curtime);
-            localtime_r(&curtime,&lt);
+			localtime_r(&curtime,&lt);
 #endif
 			tblock.tm_hour=atoi(cbuf+7);
 			tblock.tm_min=atoi(cbuf+10);
 
 			if (lt.tm_mon>=tblock.tm_mon)
-			     tblock.tm_year=lt.tm_year;
+				tblock.tm_year=lt.tm_year;
 			else
-			     tblock.tm_year=lt.tm_year-1;
+				tblock.tm_year=lt.tm_year-1;
 		}else{
 			tblock.tm_year=atoi(cbuf+8)-1900;
 		}
@@ -516,9 +516,9 @@ time_t decode_textdate(const char * cbuf){
 		if (len>=24){
 			tblock.tm_mon=decode_textmonth(cbuf+4);
 			if (cbuf[8]==' ')
-			     tblock.tm_mday=atoi(cbuf+9);
+				tblock.tm_mday=atoi(cbuf+9);
 			else
-			     tblock.tm_mday=atoi(cbuf+8);
+				tblock.tm_mday=atoi(cbuf+8);
 			tblock.tm_hour=atoi(cbuf+11);
 			tblock.tm_min=atoi(cbuf+14);
 			tblock.tm_sec=atoi(cbuf+17);
