@@ -131,7 +131,8 @@ inline void c_prot_nntp::nntp_print_retrieving_headers(ulong lll,ulong hhh,ulong
 	time_t dtime=lasttime-starttime;
 	long Bps=(dtime>0)?bbb/dtime:0;
 	long Bph=(done>0)?bbb/done:0;
-	printf("\rRetrieving headers %lu-%lu: %li %3li%% %liB/s %lis ",lll,hhh,done,(tot!=0)?(done*100/tot):0,Bps,(Bps>0)?((hhh-ccc)*Bph)/(Bps):0);
+	if (!quiet)printf("\r");
+	printf("Retrieving headers %lu-%lu: %li %3li%% %liB/s %lis ",lll,hhh,done,(tot!=0)?(done*100/tot):0,Bps,(Bps>0)?((hhh-ccc)*Bph)/(Bps):0);
 	fflush(stdout);//@@@@
 }
 /*
@@ -164,10 +165,10 @@ void c_prot_nntp::doxover(ulong low, ulong high){
 	int i,dcounter=0,dtrip=10,dtripmax=50,dtripmin=2,dtripdiv=50;
 	nntp_doopen();
 	nntp_dogroup(0);
-	if (!quiet){
+	if (quiet<2)
 		time(&starttime);
+	if (!quiet)
 		nntp_print_retrieving_headers(low,high,low,0);
-	}
 	if (low==high)
 		chkreply(stdputline(debug>=DEBUG_MED,"XOVER %lu",low));//save a few bytes
 	else
@@ -242,7 +243,7 @@ void c_prot_nntp::doxover(ulong low, ulong high){
 			continue;
 		}
 	}while(1);
-	if(!quiet /*&& an*/){
+	if(quiet<2 /*&& an*/){
 		if (lowest==0)
 			lowest=an=low;
 		nntp_print_retrieving_headers(lowest,high,an,bytes);
@@ -267,7 +268,7 @@ void c_prot_nntp::nntp_dogroup(int getheaders){
 	}
 	nntp_doopen();
 	if (groupselected) return;
-	chkreply(stdputline(!quiet,"GROUP %s",group->group.c_str()));
+	chkreply(stdputline(quiet<2,"GROUP %s",group->group.c_str()));
 //	stdgetreply(1);
 	groupselected=1;
 	char *p;
@@ -318,8 +319,8 @@ void c_prot_nntp::nntp_group(c_group_info::ptr ngroup, int getheaders){
 //	grange=new c_nrange(nghome + "/" + host + "/" + group + "_r");
 //	grange=new c_nrange(nghome + "/" + group + "_r");
 
-	midinfo=new c_mid_info((nghome + group->group + "_midinfo"));
-	gcache=new c_nntp_cache(nghome,group->group);
+	midinfo=new c_mid_info((nghome + group->group + ",midinfo"));
+	gcache=new c_nntp_cache(nghome,group->group + ",cache");
 	groupselected=0;
 	if (getheaders){
 		if (force_host){
@@ -360,7 +361,8 @@ void c_prot_nntp::nntp_group(c_group_info::ptr ngroup, int getheaders){
 inline void arinfo::print_retrieving_articles(time_t curtime, quinfo*tot){
 	dtime=curtime-starttime;
 	Bps=(dtime>0)?bytesdone/dtime:0;
-	printf("\rarticle %li: %li/%liL %li/%liB %3li%% %liB/s %lis ",
+	if (!quiet)printf("\r");
+	printf("article %li: %li/%liL %li/%liB %3li%% %liB/s %lis ",
 			anum,linesdone,linestot,bytesdone,bytestot,
 			(linestot!=0)?(linesdone*100/linestot):0,Bps,
 			(linesdone>=linestot)?dtime:((Bps>0)?(bytestot-bytesdone)/(Bps):-1));
@@ -429,6 +431,8 @@ int c_prot_nntp::nntp_dowritelite_article(c_file &fw,c_nntp_part *part,char *fn)
 int c_prot_nntp::nntp_doarticle(c_nntp_part *part,arinfo*ari,quinfo*toti,char *fn){
 //	long bytes=0,lines=0;
 	int header=1;
+	int linecounterr=0,loopnum,maxlinecounterrtries=2;
+	bool counterrthisloop;
 	time_t curt,lastt=0;
 	//c_file_stream f;
 	c_file_fd f;
@@ -437,108 +441,132 @@ int c_prot_nntp::nntp_doarticle(c_nntp_part *part,arinfo*ari,quinfo*toti,char *f
 	t_nntp_server_articles_prioritized::reverse_iterator sapi;
 	t_nntp_server_articles_prioritized::iterator curservsapi=sap.end();
 	nntp_doarticle_prioritize(part,sap,&curservsapi);
-	for (sapi = sap.rbegin(); sapi != sap.rend(); ++sapi){
-		sa=(*sapi).second;
-		assert(sa);
-		if (curserverid!=sa->serverid){
-			nntp_close();
-			curserverid=sa->serverid;
-			host=nconfig.serv[curserverid];
-			force_host=NULL;
-		}
-		ari->anum=sa->articlenum;
-		ari->bytestot=sa->bytes;
-		ari->linestot=sa->lines;
-		PDEBUG(DEBUG_MED,"trying server %lu article %lu",sa->serverid,sa->articlenum);
-		nntp_doopen();
-		nntp_dogroup(0);
-		if (stdputline(debug>=DEBUG_MED,"ARTICLE %li",sa->articlenum)/100!=2){//if error retrieving from one server, try another that has it
-			printf("error retrieving article %li: %s\n",sa->articlenum,cbuf);
-//			return -1;
-		}else
-			break;//this server seems to have it, so lets get it.  (errrors durring d/l will be handled by the standard retry stuff in nget.cc)
+	for (loopnum=0;linecounterr>=loopnum && loopnum<maxlinecounterrtries;loopnum++) {
+		  counterrthisloop=0;
+		  for (sapi = sap.rbegin(); sapi != sap.rend(); ++sapi){
+			    sa=(*sapi).second;
+			    assert(sa);
+			    if (curserverid!=sa->serverid){
+					nntp_close();
+					curserverid=sa->serverid;
+					host=nconfig.serv[curserverid];
+					force_host=NULL;
+			    }
+			    ari->anum=sa->articlenum;
+			    ari->bytestot=sa->bytes;
+			    ari->linestot=sa->lines;
+			    ari->linesdone=0;
+			    ari->bytesdone=0;
+			    PDEBUG(DEBUG_MED,"trying server %lu article %lu",sa->serverid,sa->articlenum);
+			    nntp_doopen();
+			    nntp_dogroup(0);
+			    if (stdputline(debug>=DEBUG_MED,"ARTICLE %li",sa->articlenum)/100!=2){//if error retrieving from one server, try another that has it
+					printf("error retrieving article %li: %s\n",sa->articlenum,cbuf);
+					//return -1;
+					continue;
+			    }
+			    //else
+			    //break;//this server seems to have it, so lets get it.  (errrors durring d/l will be handled by the standard retry stuff in nget.cc)
+#ifdef FILE_DEBUG
+			    {
+					char *sav;
+					asprintf(&sav,"/tmp/%s.%li-%lu.%lu.log.gz",group->group.c_str(),part->date,sa->serverid,sa->articlenum);
+					sock.file_debug->start(sav);
+					free(sav);
+					//		sock.file_debug->purge();
+			    }
+			    sock.file_debug->DEBUGLOGPUTF("doarticle %lu....",ari->anum);
+#endif
+			    list<string> buf;//use a list of strings instead of char *.  Easier and it cleans up after itself too.
+			    list<string>::iterator curb;
+			    //char *p;
+			    char *lp;
+			    time(&ari->starttime);
+			    curt=starttime;
+			    long glr;
+			    do {
+					glr=getline(debug>=DEBUG_ALL);
+					if (cbuf[0]=='.'){
+						  if(cbuf[1]==0)
+							    break;
+						  lp=cbuf+1;
+					}else
+						  lp=cbuf;
+					ari->bytesdone+=glr;
+					ari->linesdone++;
+#ifdef FILE_DEBUG
+					sock.file_debug->DEBUGLOGPUTF("%s %lu bytes %lu(%lu): %s",header?"header":"line",ari->linesdone,glr,ari->bytesdone,cbuf);
+#endif
+					if (header && lp[0]==0){
+						  //			printf("\ntoasted header statssssssss\n");
+						  header=0;
+						  ari->linesdone=0;
+						  time(&ari->starttime);//bytes=0;
+					}
+					time(&curt);
+					if (!quiet && curt>lastt){
+						  //		nntp_print_retrieving_articles(num,ltotal,lines,btotal,bytes);
+						  ari->print_retrieving_articles(curt,toti);
+						  lastt=curt;
+					}
+					//p=new char[strlen(lp)+1];
+					//strcpy(p,lp);
+					buf.push_back(lp);
+			    }while(1);
+			    if (quiet<2){
+					//nntp_print_retrieving_articles(num,ltotal,lines,btotal,bytes);
+					ari->print_retrieving_articles(curt,toti);
+					printf("\n");
+			    }
+			    if ((ari->bytesdone > ari->bytestot+3 || ari->bytesdone+3 < ari->bytestot) || ari->linesdone!=ari->linestot){//some servers report # of bytes a bit off of what we expect.
+					printf("doarticle %lu: %lu!=%lu || %lu!=%lu\n",ari->anum,ari->bytesdone,ari->bytestot,ari->linesdone,ari->linestot);
+			    }
+#ifdef FILE_DEBUG
+			    sock.file_debug->DEBUGLOGPUTF("doarticle %lu: %lu(%lu),%lu(%lu)",ari->anum,ari->bytesdone,ari->bytestot,ari->linesdone,ari->linestot);
+			    if (ari->linesdone!=ari->linestot)
+					sock.file_debug->save();
+			    else
+					sock.file_debug->purge();
+			    //		sock.file_debug->save();
+#endif
+			    if (!(ari->linesdone>=ari->linestot+host->lineleniencelow && ari->linesdone<=ari->linestot+host->lineleniencehigh)){
+					nntp_close();
+					//throw new c_error(EX_T_ERROR,"\nunequal line count %lu should equal %lu... please examine %s for errors before re-running\n",ari->linesdone,ari->linestot,fn);
+					printf("unequal line count %lu should equal %lu",ari->linesdone,ari->linestot);
+					if (host->lineleniencelow||host->lineleniencehigh){
+						if (host->lineleniencelow==-host->lineleniencehigh)
+							printf("(+/- %i)",host->lineleniencehigh);
+						else
+							printf("(%+i/%+i)",host->lineleniencelow,host->lineleniencehigh);
+					}
+					printf("\n");
+					if (!counterrthisloop){linecounterr++;counterrthisloop=1;}
+					continue;
+					//#####			derr++;
+			    }
+			    if (!f.open(fn,O_CREAT|O_WRONLY|O_TRUNC,PRIVMODE)){
+					for(curb = buf.begin();curb!=buf.end();++curb){
+						  //lp=(*curb);
+						  if (f.putf("%s\n",(*curb).c_str())<=0){
+							    int e=errno;//save errno incase unlink call clobbers it.
+							    if (errno==ENOSPC){//if the drive is full, then the temp file will be cutoff and useless, so delete it.
+									if (unlink(fn))
+										  perror("unlink:");
+							    }
+							    throw new c_error(EX_A_FATAL,"error writing %s: %s",fn,strerror(e));
+						  }
+						  //delete [] p;
+					}
+					f.close();
+			    }else
+					throw new c_error(EX_A_FATAL,"unable to open %s: %s",fn,strerror(errno));
+			    return 0;
+		  }
 	}
 	if (sapi == sap.rend()){
 		printf("couldn't get %s from anywhere\n",part->messageid.c_str());
 		return -1;
 	}
-#ifdef FILE_DEBUG
-	{
-		char *sav;
-		asprintf(&sav,"/tmp/%s.%li-%lu.%lu.log.gz",group->group.c_str(),part->date,sa->serverid,sa->articlenum);
-		sock.file_debug->start(sav);
-		free(sav);
-//		sock.file_debug->purge();
-	}
-	sock.file_debug->DEBUGLOGPUTF("doarticle %lu....",ari->anum);
-#endif
-	list<char *> buf;
-	list<char *>::iterator curb;
-	char *p,*lp;
-	time(&ari->starttime);
-	curt=starttime;
-	long glr;
-	do {
-		glr=getline(debug>=DEBUG_ALL);
-		if (cbuf[0]=='.'){
-			if(cbuf[1]==0)
-				break;
-			lp=cbuf+1;
-		}else
-			lp=cbuf;
-		ari->bytesdone+=glr;
-		ari->linesdone++;
-#ifdef FILE_DEBUG
-		sock.file_debug->DEBUGLOGPUTF("%s %lu bytes %lu(%lu): %s",header?"header":"line",ari->linesdone,glr,ari->bytesdone,cbuf);
-#endif
-		if (header && lp[0]==0){
-//			printf("\ntoasted header statssssssss\n");
-			header=0;
-			ari->linesdone=0;
-			time(&ari->starttime);//bytes=0;
-		}
-		time(&curt);
-		if (!quiet && curt>lastt){
-	//		nntp_print_retrieving_articles(num,ltotal,lines,btotal,bytes);
-			ari->print_retrieving_articles(curt,toti);
-			lastt=curt;
-		}
-		p=new char[strlen(lp)+1];
-		strcpy(p,lp);
-		buf.push_back(p);
-	}while(1);
-	if (!quiet){
-		//nntp_print_retrieving_articles(num,ltotal,lines,btotal,bytes);
-		ari->print_retrieving_articles(curt,toti);
-		printf("\n");
-	}
-	if ((ari->bytesdone > ari->bytestot+3 || ari->bytesdone+3 < ari->bytestot) || ari->linesdone!=ari->linestot){//some servers report # of bytes a bit off of what we expect.
-		printf("doarticle %lu: %lu!=%lu || %lu!=%lu\n",ari->anum,ari->bytesdone,ari->bytestot,ari->linesdone,ari->linestot);
-	}
-#ifdef FILE_DEBUG
-	sock.file_debug->DEBUGLOGPUTF("doarticle %lu: %lu(%lu),%lu(%lu)",ari->anum,ari->bytesdone,ari->bytestot,ari->linesdone,ari->linestot);
-	if (ari->linesdone!=ari->linestot)
-		sock.file_debug->save();
-	else
-		sock.file_debug->purge();
-//		sock.file_debug->save();
-#endif
-	if (ari->linesdone!=ari->linestot){
-		//throw new c_error(EX_T_ERROR,"nntp_getline:%i %s(%i)",i,strerror(errno),errno);
-		nntp_close();
-		//throw new c_error(EX_T_ERROR,"\nunequal line count %lu should equal %lu... please examine %s for errors before re-running\n",ari->linesdone,ari->linestot,fn);
-		throw new c_error(EX_T_ERROR,"\nunequal line count %lu should equal %lu.... aonetunaotheuntahoenuth\n",ari->linesdone,ari->linestot,fn);
-	}
-	if (!f.open(fn,O_CREAT|O_WRONLY|O_TRUNC,PRIVMODE)){
-		for(curb = buf.begin();curb!=buf.end();++curb){
-			p=(*curb);
-			if (f.putf("%s\n",p)<=0)
-				throw new c_error(EX_A_FATAL,"error writing %s: %s",fn,strerror(errno));
-			delete [] p;
-		}
-		f.close();
-	}else
-		throw new c_error(EX_A_FATAL,"unable to open %s: %s",fn,strerror(errno));
 	return 0;
 }
 
@@ -547,7 +575,9 @@ int uu_info_callback(void *v,char *i){
 	return 0;
 };
 void uu_msg_callback(void *v,char *m,int t){
-	if (quiet && (t==UUMSG_MESSAGE || t==UUMSG_NOTE))
+	if (t!=UUMSG_MESSAGE)//######
+		++(*(int *)v);
+	if (quiet>=2 && (t==UUMSG_MESSAGE || t==UUMSG_NOTE))
 		return;
 	printf("uu_msg(%i):%s\n",t,m);
 };
@@ -641,7 +671,8 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 //			bp=f->parts.begin()->second;
 			list<char *> fnbuf;
 			list<char *>::iterator fncurb;
-			int derr=0;
+			//int derr=0;
+			derr=0;
 			int un=0;
 			for(curp = f->parts.begin();curp!=f->parts.end();++curp){
 				//asprintf(&fn,"%s/%s-%s-%li-%li-%li",nghome.c_str(),host.c_str(),group.c_str(),fgnum,part,num);
@@ -664,8 +695,8 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 				}
 				if (!fexists(fn)){
 //					ainfo.anum=p->articlenum;//set in doarticle now.
-					ainfo.linesdone=0;
-					ainfo.bytesdone=0;
+//					ainfo.linesdone=0;
+//					ainfo.bytesdone=0;
 //					ainfo.linestot=p->lines;
 //					ainfo.bytestot=p->bytes;
 					if (!writelite.empty()){
@@ -687,7 +718,7 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 					}
 				}else{
 //					qtotinfo.bytestot-=p->bytes;
-					if (!quiet) printf("already have article %s (%s)\n",p->messageid.c_str(),fn);
+					if (quiet<2) printf("already have article %s (%s)\n",p->messageid.c_str(),fn);
 				}
 				qtotinfo.bytesleft-=p->bytes();
 //				UULoadFile(fn,NULL,0);//load once they are all d/l'd
@@ -702,7 +733,7 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 				//actually, I guess that won't work, since some messages have multiple files in them anyway.
 				UUSetOption(UUOPT_OVERWRITE,0,NULL);//no thanks.
 				UUSetOption(UUOPT_USETEXT,1,NULL);//######hmmm...
-				UUSetMsgCallback(NULL,uu_msg_callback);
+				UUSetMsgCallback(&derr,uu_msg_callback);
 				UUSetBusyCallback(NULL,uu_busy_callback,1000);
 				for(fncurb = fnbuf.begin();fncurb!=fnbuf.end();++fncurb){
 					UULoadFile((*fncurb),NULL,0);
@@ -726,6 +757,7 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 						r=UUInfoFile(uul,NULL,uu_info_callback);
 					r=UUDecodeFile(uul,NULL);
 					if (r==UURET_EXISTS){
+						derr--; //HACK since this error will also cause a uu_warning thingy, which will incr derr, but we don't want that.
 						char *nfn;
 						//asprintf(&nfn,"%s.%lu.%i",uul->filename,f->banum(),rand());
 						asprintf(&nfn,"%s.%lu.%i",uul->filename,f->badate(),rand());
@@ -780,15 +812,15 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 				derr=-2;
 			}else if (derr==0){
 				if (options&GETFILES_KEEPTEMP){
-					if (!quiet)
+					if (quiet<2)
 						printf("not decoding, keeping temp files.\n");
 					derr=1;
 				}
 				else if (options&GETFILES_NODECODE){
-					if (!quiet)
+					if (quiet<2)
 						printf("decoded ok, keeping temp files.\n");
 					derr=1;
-				}else if (!quiet)
+				}else if (quiet<2)
 						printf("decoded ok, deleting temp files.\n");
 			}
 			char *p;
@@ -830,17 +862,17 @@ void c_prot_nntp::nntp_doauth(const char *user, const char *pass){
 		nntp_close();
 		throw new c_error(EX_U_FATAL,"nntp_doauth: no authorization info known");
 	}
-	putline(!quiet,"AUTHINFO USER %s",user);
-	i=getreply(!quiet);
+	putline(quiet<2,"AUTHINFO USER %s",user);
+	i=getreply(quiet<2);
 	if (i==350 || i==381){
 		if(!pass){
 			nntp_close();
 			throw new c_error(EX_U_FATAL,"nntp_doauth: no password known");
 		}
 		putline(0,"AUTHINFO PASS %s",pass);
-		if (!quiet)
+		if (quiet<2)
 			printf(">AUTHINFO PASS *\n");
-		i=getreply(!quiet);
+		i=getreply(quiet<2);
 	}
 	chkreply(i);
 	authed=1;
@@ -872,7 +904,7 @@ void c_prot_nntp::nntp_doopen(void){
 			//throw new c_error(EX_T_FATAL,"make_connection:%i %s(%i)",i,strerror(errno),errno);
 			throw new c_error(EX_T_ERROR,"make_connection:%i %s(%i)",i,strerror(errno),errno);
 		}
-		chkreply(getreply(!quiet));
+		chkreply(getreply(quiet<2));
 		putline(debug>=DEBUG_MED,"MODE READER");
 		getline(debug>=DEBUG_MED);
 		groupselected=0;
@@ -887,7 +919,7 @@ void c_prot_nntp::nntp_close(int fast){
 //	}
 	if (sock.isopen()){
 		if (!fast)
-			putline(!quiet,"QUIT");
+			putline(quiet<2,"QUIT");
 			//putline(debug,"QUIT");
 		sock.close();
 	}

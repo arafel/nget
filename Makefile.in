@@ -107,7 +107,7 @@ clean:
 distclean: clean
 	-rm config.h config.cache config.log Makefile stamp-h .depend
 #	-rm *~ config.h config.cache config.log Makefile stamp-h .depend
-	-cp .depend.dist .depend
+#	-cp .depend.dist .depend
 		 
 
 #ifeq (.depend,$(wildcard .depend))

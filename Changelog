@@ -1,3 +1,28 @@
+nget (0.12) unstable; urgency=low
+
+  * Fixed segfault on invalid param to -F
+  * Deletes tempfile on drive full error.  (Otherwise the useless
+    truncated file may cause annoyances later)
+  * On unequal line count errors, will now try other servers or give up, 
+    instead of looping on the same one.  (See also: new linelenience option)
+  * Fixed configure --with-pcre option being ignored if a path was not
+    specified.
+  * On uulib warning messages, cause an error and keep the temp files around
+    so that the user can examine them and see what (if anything) went wrong.
+  * Header cache and midinfo files now have ,cache(.gz) and ,midinfo(.gz)
+    extensions, in order to prevent possible (but unlikely) problems with
+    newsgroups that might have had _midinfo in the name.  More importantly,
+    it allows for easy exclusion of cache files from backups.
+    If you are upgrading from a previous version, run the fixnames.sh script
+    to update your cache file names.
+  * Added per-server linelenience option to control generation of unequal 
+    line count errors.
+  * Changed -q behavior, a single -q will merely disable the auto-updating
+    output, to make redirecting the output (eg, logging) acceptable.
+    Specifying -q twice will use the old behavior of being very quiet.
+
+ -- Matt Mueller <donut@azstarnet.com>  Wed, 18 Aug 2000 21:47:34 -0700
+  
 nget (0.11) unstable; urgency=low
 
   * Fixed segfault on reconnecting after exception in ngetlite.

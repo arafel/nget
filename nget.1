@@ -1,4 +1,4 @@
-.TH nget 1 "9 Aug 2000"
+.TH nget 1 "18 Aug 2000"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -10,7 +10,9 @@ contained within.  Multipart messages are automatically pieced together.
 .SH OPTIONS
 .PP
 .IP "-q/--quiet"
-Disable printing of merely informative messages.  Errors will still be printed.
+When specified once, will disable printing of auto-updating text to allow the output to be 
+redirected/logged without garbage in it.
+When specified twice, will disable printing of merely informative messages.  Errors will still be printed.
 .IP "-h/--host host"
 NNTP host to use for subsequent -g commands.  Must be configured in .ngetrc.
 Can reset to standard auto-choosing method with -h ""
@@ -115,11 +117,18 @@ Float: curservmult
 Boolean(0/1): case, complete, dupeidcheck, dupefilecheck, quiet, tempshortnames
 .P
 Host configuration is done in the halias section, with a subsection for each
-host containing its address, unique id, and optionally user/pass/fullxover
+host containing its address, unique id, and optionally user, pass, fullxover, and linelenience
 items.  The "id" field must be unique, and should not be changed after you have
 used it (since it could leave leftovers in your cache files, unless you delete
 them first).  The "id" must be greater than 0 and less than ULONG_MAX. (usually
 4294967295).  In other words, don't use id 0.
+.br
+The linelenience option may be specified as either a single int, or two ints seperated by a comma.
+If only a single int, X is specified, then it will be interpeted as shorthand for "-X,+X".
+These values specify the ammount that the real (recieved) number of lines (inclusive) for an article may deviate from
+the values returned by the server in the header listings.  For example, "-1,2" means that the real number
+of lines may be one less than, equal to, one greater than, or two greater than the expected amount.
+The default linelenience is 0.
 .br
 For example, the following host section defines a single host "host1", with
 nntp authentication for user "bob", password "something", and the fullxover
@@ -140,6 +149,8 @@ than the latest.)
 .B   pass=something
 .br
 .B   fullxover=1
+.br
+.B   linelenience=-1,2
 .br
 .B  }
 .br

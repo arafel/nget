@@ -26,6 +26,36 @@
 #include "misc.h"
 #include "rcount.h"
 
+static int parse_pair(const char *s, int *l, int *h){
+	const char *p;
+	char *erp;
+	int i;
+	if (!s || *s=='\0')return -1;
+	p=strchr(s,',');
+	if (p){
+		int i2;
+		p++;
+		if (*p=='\0')return -1;
+		i=strtol(s,&erp,0);
+		if (*erp!=',')
+			return -1;
+		i2=strtol(p,&erp,0);
+		if (*erp!='\0')
+			return -1;
+		if (i<=i2){
+			*l=i;*h=i2;
+		}else{
+			*l=i2;*h=i;
+		}
+	}else{
+		i=strtol(s,&erp,0);
+		if (*erp!='\0')
+			return -1;
+		if (i<0)i=-i;
+		*l=-i;*h=i;
+	}
+	return 0;
+}
 
 class c_server {
 	public:
@@ -34,13 +64,26 @@ class c_server {
 		string addr;
 		string user,pass;
 		bool fullxover;
-		c_server(ulong id, string alia, string add, string use,string pas,const char *fullxove):alias(alia),addr(add),user(use),pass(pas){
+		int lineleniencelow,lineleniencehigh;
+
+		c_server(ulong id, string alia, string add, string use,string pas,const char *fullxove,const char *ll):alias(alia),addr(add),user(use),pass(pas){
 //			serverid=atoul(id.c_str());
 			serverid=id;
 			if (fullxove)
 				fullxover=atoi(fullxove);
 			else
 				fullxover=0;
+			if (ll){
+				int l,h;
+				if (!parse_pair(ll,&l,&h)){
+					lineleniencelow=l;lineleniencehigh=h;
+				}else{
+					printf("invalid linelenience %s for host %s\n",ll,addr.c_str());
+					lineleniencelow=lineleniencehigh=0;
+				}
+			}else{
+				lineleniencelow=lineleniencehigh=0;
+			}
 		}
 };
 typedef map<ulong,c_server*,less<ulong> > t_server_list;
@@ -173,7 +216,7 @@ class c_nget_config {
 					printf("host %s invalid id '%s'\n",ds->key.c_str(),sida);
 					continue;
 				}
-				server=new c_server(tul,ds->key,ds->getitems("addr"),ds->getitems("user"),ds->getitems("pass"),ds->getitema("fullxover"));
+				server=new c_server(tul,ds->key,ds->getitems("addr"),ds->getitems("user"),ds->getitems("pass"),ds->getitema("fullxover"),ds->getitema("linelenience"));
 				serv[server->serverid]=server;
 			}
 			//hpriority

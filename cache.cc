@@ -416,7 +416,7 @@ ulong c_nntp_cache::flushlow(c_nntp_server_info *servinfo, ulong newlow, c_mid_i
 	t_nntp_server_articles::iterator sai;
 	c_nntp_server_article *sa;
 	c_mid_info rel_midinfo("");
-	if (!quiet) {printf("Flushing headers %lu-%lu(%lu):",servinfo->low,newlow-1,newlow-servinfo->low);fflush(stdout);}
+	if (quiet<2) {printf("Flushing headers %lu-%lu(%lu):",servinfo->low,newlow-1,newlow-servinfo->low);fflush(stdout);}
 	for(in = files.begin();in!=files.end();){
 		i=in;
 		++in;
@@ -478,7 +478,7 @@ ulong c_nntp_cache::flushlow(c_nntp_server_info *servinfo, ulong newlow, c_mid_i
 		}
 	}
 #endif
-	if (!quiet){printf(" %lu (%lu,%lu)\n",count,countp,countf);}
+	if (quiet<2){printf(" %lu (%lu,%lu)\n",count,countp,countf);}
 	if (count)saveit=1;
 
 	midinfo->do_delete_fun(rel_midinfo);
@@ -638,7 +638,7 @@ c_nntp_cache::~c_nntp_cache(){
 						O_CREAT|O_WRONLY|O_TRUNC,PUBMODE
 #endif
 						))){
-			if (!quiet){printf("saving cache: %lu parts, %i files..",totalnum,files.size());fflush(stdout);}
+			if (quiet<2){printf("saving cache: %lu parts, %i files..",totalnum,files.size());fflush(stdout);}
 			c_nntp_file::ptr nf;
 			t_nntp_file_parts::iterator pi;
 			t_nntp_server_articles::iterator sai;
@@ -681,7 +681,7 @@ c_nntp_cache::~c_nntp_cache(){
 				//nf->dec_rcount();
 			}
 			f.close();
-			if (!quiet) printf(" done. (%lu sa)\n",counta);
+			if (quiet<2) printf(" done. (%lu sa)\n",counta);
 			if (count!=totalnum){
 				printf("warning: wrote %lu parts from cache, expecting %lu\n",count,totalnum);
 			}
@@ -691,7 +691,7 @@ c_nntp_cache::~c_nntp_cache(){
 		}
 	}
 
-	if (!quiet){printf("freeing cache: %lu parts, %i files..\n",totalnum,files.size());}//fflush(stdout);}
+	if (quiet<2){printf("freeing cache: %lu parts, %i files..\n",totalnum,files.size());}//fflush(stdout);}
 
 //	for(i = files.begin();i!=files.end();++i){
 		//delete (*i).second;

@@ -1,6 +1,17 @@
 
+
+*derr on uulib messages - file already exists derr.. is the current hack good enough?
+
+
+*make error on connect when retrieving headers retry or try a different host instead of bombing or whatever?
+
+*redo byte lenience?
+*store d/l path in -w files (for -W)
+*make -W switch to read in -w files and decode it all. (also if downloading any, update the file )
+*do servinfo's get leaked?
+
 definataly gonna do:
-*use write-flush-rename for midinfo/headers/config(if we ever modify it)
+*use write-flush-rename for midinfo/headers/(and config, if we ever modify it)
 *make manpage for ngetlite
 *make MID_INFO_MIN_KEEP, etc config options
 *update STL includes/etc to use new non-.h files, and std namespace
@@ -15,12 +26,16 @@ definataly gonna do:
 
 might do eventually:
 
+ * cross post detection/mark downloaded in all groups somehow??
+   Hm, actually it might not be that hard.. since mids are globally unique, it
+   could just use the same midinfo for _all_ groups?  sound good/bad?
+ * ditch/fix uulib?   Are there any alternatives?
  * make -@ relative to start dir rather than -p dir? (when not using .nget3/lists/ dir)
  * allow -p/-P to create dirs (ala mkdir -P).  Perhaps enabled by config option
    or other switch?
  * per group (.ngetrc) config setting for "base directory", then -p/-P could be
-   relative of that.  (or not... maybe if you put / or ./ in front, it would be
-   relative to current instead of base)
+   relative of that.  (maybe if you put / or ./ in front, it would be
+   relative to root/current instead of base)
  * allow searching based upon date/author/lines etc.  ideally, something like:
    nget -r (date > 03/04/1999 && (author = bob && subject = file\.) || (subject
    = blah)).. DONE, but uses postfix method.. might be nice to add infix type.
@@ -37,10 +52,8 @@ might do eventually:
 
 only considering:
 
- * store fileread info in a seperate file, so we don't have to write out the
-   big ole cache again. -- partially done, just need to implement
-   saving/loading/checking/adding ... DONE... but should we store only the anum
-   of the first part, like now, or all of the anums? (anums -> message-ids)
+ * should the midinfo files only store the mid for the first part, like now, 
+   or the mid of all parts of the post?
 
 
 Misc info:

@@ -137,7 +137,7 @@ static void addoptions(void)
 	addoption(NULL,0,0,NULL,NULL);
 };
 static void print_help(void){
-      printf("nget v0.11 - nntp command line fetcher\n");
+      printf("nget v0.12 - nntp command line fetcher\n");
       printf("Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -464,7 +464,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 				case 'F':
 					{
 						c_server* server=nconfig.getserver(loptarg);
-						if (!server)printf("no such server %s\n",loptarg);
+						if (!server) {printf("no such server %s\n",loptarg);break;}
 						c_nntp_server_info* servinfo=nntp.gcache->getserverinfo(server->serverid);
 
 						nntp.gcache->flushlow(servinfo,ULONG_MAX,nntp.midinfo);

@@ -73,6 +73,7 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 		c_nntp_cache::ptr gcache;
 		c_nntp_files_u *filec;
 		time_t starttime;
+		int derr;
 
 		int stdputline(int echo,const char * str,...);
 		int putline(int echo, const char * str,...)

@@ -77,6 +77,8 @@ AC_ARG_WITH(pcre,
 		CXXFLAGS="$CXXFLAGS -I$withval -L$withval"
 		dnl need to set ac_cpp too, so the header check will work
 		ac_cpp="$ac_cpp -I$withval"
+	else
+		usez=yes
 	fi
 )
 if test "$usez" != "no"; then
