@@ -81,7 +81,7 @@ void addoption(char *longo,int needarg,char shorto,char *adesc,char *desc){
 	cur++;
 }
 void print_help(void){
-      printf("nget v0.3 - nntp command line fetcher\n");
+      printf("nget v0.4 - nntp command line fetcher\n");
       printf("Copyright 1999 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\

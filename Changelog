@@ -1,3 +1,9 @@
+nget (0.4) unstable; urgency=low
+
+  * included aclocal.m4 in the tar.gz
+
+ -- Matt Mueller <donut@azstarnet.com>  Tue, 15 Jun 1999 20:59:54 -0700
+
 nget (0.3) unstable; urgency=low
 
   * doesn't download files you already have.. kinda rudementary, could easily

@@ -1,4 +1,4 @@
-nget 0.3  Copyright 1999 Matt Mueller <donut@azstarnet.com>
+nget 0.4  Copyright 1999 Matt Mueller <donut@azstarnet.com>
 
 Install:
 0) if you have uulib as a shared lib: ./configure and skip to step 2
