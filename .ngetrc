@@ -13,6 +13,7 @@ debug=0
 tempshortnames=0
 curservmult=2.0
 makedirs=no
+usegz=-1
 
 //hostname aliases
 {halias
@@ -66,6 +67,18 @@ makedirs=no
  {wark
   group=alt.chocobo.wark.wark.wark
   prio=chocoboprios
+ }
+ {idunno
+  group=alt.idunno.why.but.this.one.isnt.compressed
+  usegz=0
+ }
+ {less
+  group=alt.this.one.is.compressed.less.but.it.should.be.faster
+  usegz=3
+ }
+ {more
+  group=alt.slower.but.more.compression
+  usegz=9
  }
 }
 

@@ -1,6 +1,6 @@
 /*
     cache.* - nntp header cache code
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -316,12 +316,13 @@ class c_mid_info {
 
 class c_nntp_cache : public c_refcounted<c_nntp_cache>{
 	public:
-		string cdir,file;
+		string file;
 		t_nntp_files files;
 		ulong totalnum;
 //		ulong high,low,num;
 		t_nntp_server_info server_info;
 		c_nntp_server_info*getserverinfo(ulong serverid);
+		c_group_info::ptr group;
 		int saveit;
 		int fileread;
 		//int additem(ulong an,char *s,const char * a,time_t d, ulong b, ulong l){
@@ -331,7 +332,7 @@ class c_nntp_cache : public c_refcounted<c_nntp_cache>{
 		//c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_nrange *grange,const char *match, unsigned long linelimit,int flags);
 		//c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_nrange *grange,nntp_pred *pred,int flags);
 		c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_mid_info *midinfo,generic_pred *pred,int flags);
-		c_nntp_cache(string path,string nid);
+		c_nntp_cache(string path,c_group_info::ptr group);
 		virtual ~c_nntp_cache();
 };
 

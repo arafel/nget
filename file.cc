@@ -1,6 +1,6 @@
 /*
     file.* - file io classes
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -195,12 +195,33 @@ int c_file_fd::dup(int dfd){
 	if (fd<0)return fd;
 	else return 0;
 }
+
 int c_file_fd::open(const char *host,int flags, int mode){
 	close();
 //	return (!(fs=fopen(name,mode)));
 	fd=::open(host,flags,mode);
 	if (fd<0)return fd;
 	else return 0;
+}
+int fopen2open(const char *mode){
+	if (strncmp(mode,"r+",2)==0)
+		return O_RDWR;
+	if (mode[0]=='r')
+		return O_RDONLY;
+	if (strncmp(mode,"w+",2)==0)
+		return O_RDWR | O_CREAT | O_TRUNC;
+	if (mode[0]=='w')
+		return O_WRONLY | O_CREAT | O_TRUNC;
+	if (strncmp(mode,"a+",2)==0)
+		return O_RDWR | O_CREAT | O_APPEND;
+	if (mode[0]=='a')
+		return O_WRONLY | O_CREAT | O_APPEND;
+	assert(0);
+	return 0;
+}
+int c_file_fd::open(const char *host,const char *mode){
+	int flags=fopen2open(mode);
+	return open(host,flags);
 }
 int c_file_fd::doflush(void){
 	if (fd>=0)

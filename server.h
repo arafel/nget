@@ -1,6 +1,6 @@
 /*
     server.* - nget configuration handling
-    Copyright (C) 2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 2000-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,40 +22,13 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <map.h>
 #include "datfile.h"
 #include "misc.h"
 #include "rcount.h"
 
-static int parse_pair(const char *s, int *l, int *h){
-	const char *p;
-	char *erp;
-	int i;
-	if (!s || *s=='\0')return -1;
-	p=strchr(s,',');
-	if (p){
-		int i2;
-		p++;
-		if (*p=='\0')return -1;
-		i=strtol(s,&erp,0);
-		if (*erp!=',')
-			return -1;
-		i2=strtol(p,&erp,0);
-		if (*erp!='\0')
-			return -1;
-		if (i<=i2){
-			*l=i;*h=i2;
-		}else{
-			*l=i2;*h=i;
-		}
-	}else{
-		i=strtol(s,&erp,0);
-		if (*erp!='\0')
-			return -1;
-		if (i<0)i=-i;
-		*l=-i;*h=i;
-	}
-	return 0;
-}
+int parse_int_pair(const char *s, int *l, int *h);
+
 
 class c_server {
 	public:
@@ -75,7 +48,7 @@ class c_server {
 				fullxover=0;
 			if (ll){
 				int l,h;
-				if (!parse_pair(ll,&l,&h)){
+				if (!parse_int_pair(ll,&l,&h)){
 					lineleniencelow=l;lineleniencehigh=h;
 				}else{
 					printf("invalid linelenience %s for host %s\n",ll,addr.c_str());
@@ -127,7 +100,8 @@ class c_group_info : public c_refcounted<c_group_info>{
 		string group;
 //		string priogrouping;
 		c_server_priority_grouping *priogrouping;
-		c_group_info(string alia, string name, c_server_priority_grouping *prio):alias(alia),group(name),priogrouping(prio){}
+		int usegz;
+		c_group_info(string alia, string name, c_server_priority_grouping *prio, int gz):alias(alia),group(name),priogrouping(prio),usegz(gz){}
 };
 typedef map<const char *,c_group_info::ptr, ltstr> t_group_info_list;
 
@@ -145,6 +119,7 @@ class c_nget_config {
 		c_server_priority_grouping *trustsizes;
 		t_group_info_list groups;
 		float curservmult;
+		int usegz;
 
 		c_server* getserver(string name){
 			serv_match_by_name name_matcher;
@@ -160,7 +135,7 @@ class c_nget_config {
 				return (*spgli).second;
 			return NULL;
 		}
-		c_group_info::ptr addgroup(string alias, string name, string prio){
+		c_group_info::ptr addgroup(string alias, string name, string prio, int usegz=-2){
 			if (name.empty())return NULL;
 			if (prio.empty())prio="default";
 			c_server_priority_grouping *priog=getpriogrouping(prio);
@@ -169,7 +144,7 @@ class c_nget_config {
 				return NULL;
 			}
 			assert(priog);
-			c_group_info::ptr group(new c_group_info(alias,name,priog));
+			c_group_info::ptr group(new c_group_info(alias,name,priog,usegz));
 			if (!group.isnull()){
 				if (!alias.empty())
 					groups.insert(t_group_info_list::value_type(group->alias.c_str(),group));
@@ -183,102 +158,10 @@ class c_nget_config {
 				return (*gili).second;
 			return addgroup("",groupname,"");//do we even need to addgroup?  since groups are refcounted, could just return a new one.. nothing really needs it to be in the list..
 		}
-		void setlist(c_data_section *hinfo,c_data_section *pinfo,c_data_section *ginfo){
-			c_server *server;
-			data_list::iterator dli,dlj;
-			c_data_section *ds;
-			c_data_item *di;
-			const char *sida;
-			ulong tul;
-			//halias
-			assert(hinfo);
-			for (dli=hinfo->data.begin();dli!=hinfo->data.end();++dli){
-				di=(*dli).second;
-				if (di->type!=1){
-					printf("h not a section\n");
-					continue;
-				}
-				//				ds=dynamic_cast<c_data_section*>(di);
-				ds=(c_data_section*)(di);//TODO: ok, this is bad, but dynamic_cast doesn't work. ??
-				if (!ds){
-					printf("h !ds\n");continue;
-				}
-				if (!ds->getitema("addr")){
-					printf("host %s no addr\n",ds->key.c_str());
-					continue;
-				}
-				if (!(sida=ds->getitema("id"))){
-					printf("host %s no id\n",ds->key.c_str());
-					continue;
-				}
-				tul=atoul(sida);
-				if (tul==0){
-					printf("host %s invalid id '%s'\n",ds->key.c_str(),sida);
-					continue;
-				}
-				server=new c_server(tul,ds->key,ds->getitems("addr"),ds->getitems("user"),ds->getitems("pass"),ds->getitema("fullxover"),ds->getitema("linelenience"));
-				serv[server->serverid]=server;
-			}
-			//hpriority
-			if (pinfo)
-				for (dli=pinfo->data.begin();dli!=pinfo->data.end();++dli){
-					di=(*dli).second;
-					if (di->type!=1){
-						printf("p not a section\n");
-						continue;
-					}
-					//				ds=dynamic_cast<c_data_section*>(di);
-					ds=(c_data_section*)(di);//TODO: ok, this is bad, but dynamic_cast doesn't work. ??
-					if (!ds){
-						printf("p !ds\n");continue;
-					}
-					c_server_priority_grouping *pgrouping=new c_server_priority_grouping(ds->key);
-					for (dlj=ds->data.begin();dlj!=ds->data.end();++dlj){
-						di=(*dlj).second;
-						if (di->key=="_level"){
-							pgrouping->deflevel=atof(di->str.c_str());
-						}else if (di->key=="_glevel"){
-							pgrouping->defglevel=atof(di->str.c_str());
-						}else{
-							server=getserver(di->key);
-							if (!server){
-								printf("prio section %s, server %s not found\n",ds->key.c_str(),di->key.c_str());
-								continue;
-							}
-							c_server_priority *sprio=new c_server_priority(server,atof(di->str.c_str()));
-							pgrouping->priorities.insert(t_server_priority_grouping::value_type(sprio->server->serverid,sprio));
-						}
-					}
-					if (pgrouping->alias=="trustsizes")
-						trustsizes=pgrouping;
-					else
-						prioritygroupings.insert(t_server_priority_grouping_list::value_type(pgrouping->alias.c_str(),pgrouping));
-				}
-			if (getpriogrouping("default")==NULL){
-				c_server_priority_grouping *pgrouping=new c_server_priority_grouping("default");
-				prioritygroupings.insert(t_server_priority_grouping_list::value_type(pgrouping->alias.c_str(),pgrouping));
-			}
-			if (trustsizes==NULL){
-				trustsizes=new c_server_priority_grouping("trustsizes");
-			}
-			//galias
-			if (ginfo)
-				for (dli=ginfo->data.begin();dli!=ginfo->data.end();++dli){
-					di=(*dli).second;
-					if (di->type!=1){
-						addgroup(di->key,di->str,"");
-					}else{
-						//				ds=dynamic_cast<c_data_section*>(di);
-						ds=(c_data_section*)(di);//TODO: ok, this is bad, but dynamic_cast doesn't work. ??
-						if (!ds){
-							printf("g !ds\n");continue;
-						}
-						addgroup(ds->key,ds->getitems("group"),ds->getitems("prio"));
-					}
-				}
-		}
+		void setlist(c_data_section *cfg,c_data_section *hinfo,c_data_section *pinfo,c_data_section *ginfo);
 		c_nget_config(){
 			curservmult=2.0;
+			usegz=-1;
 		}
 		~c_nget_config(){
 			t_server_list::iterator i;

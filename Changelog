@@ -1,3 +1,15 @@
+nget (0.13.2) unstable; urgency=low
+
+  * Add trailing / onto NGETHOME var so you don't need to.
+  * Fix compile on Redhat 7.0.  (#defined PROTOTYPES before including uudeview)
+  * Added usegz .ngetrc option. (global and per-group)
+  * Added exit code setting on non-fatal errors and printout of number of errors. (lemme know if you find some other errors that you think should be reported this way.)
+  * ngetlite uses ngetlite.<pid> (instead of .tmp), allowing multiple ngetlite processes to run in the same dir.
+  * ngetlite checks for bytes +-3 like nget.
+  * fix signed/unsigned error in cache.cc that caused "no host selected" errors if using a serverid larger than would fit in a signed int.
+
+ -- Matt Mueller <donut@azstarnet.com>  Thu,  8 Feb 2001 04:24:08 -0700
+ 
 nget (0.13.1) unstable; urgency=low
 
   * Use write to tempfile then rename for saving cache and midinfo.

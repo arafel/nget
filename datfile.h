@@ -1,6 +1,6 @@
 /*
     datfile.h - easy config/etc file handling
-    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -102,6 +102,11 @@ class c_data_section: public c_data_item
 		if (i && i->type==0 && i->ierr==0) {*l=i->i;return 0;}
 		return -1;
 	};
+	int geti(const char *name,int err=-1){
+		c_data_item *i=rgetitem(name);
+		if (i && i->type==0 && i->ierr==0) {return i->i;}
+		return err;
+	};
 	int getitemul(const char *name,unsigned long *l){
 		c_data_item *i=rgetitem(name);
 		if (i && i->type==0 && i->ierr==0) {*l=i->i;return 0;}
@@ -163,7 +168,7 @@ class c_data_file
 
     void setfilename(const char * f);
 
-    void read(void);
+    int read(void);
     void save(void);
 
 

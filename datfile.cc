@@ -1,6 +1,6 @@
 /*
     datfile.cc - easy config/etc file handling
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -142,9 +142,9 @@ void c_data_file::setfilename(const char * f){
 };
 
 
-void c_data_file::read(void){
+int c_data_file::read(void){
 	if (filename.size()==0)
-	     return;
+	     return -2;
 //	char buf[df_BUFSIZE];
 //	FILE *f=fopen(filename.c_str(),"r");
 	c_file_fd f;
@@ -153,7 +153,9 @@ void c_data_file::read(void){
 		data.read_list(&f);
 		changed=0;
 		f.close();
+		return 0;
 	}
+	return -1;
 };
 void c_data_file::save(void){
 	if (filename.size()==0)

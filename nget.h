@@ -1,6 +1,6 @@
 /*
     nget - command line nntp client
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,5 +36,11 @@ extern c_server_priority_grouping_list priogroups;*/
 #define PUBMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 //#define PUBXMODE (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
 #define PUBXMODE (S_IRWXU|S_IRWXG|S_IRWXO)
+
+
+void set_decode_error_status(void);
+void set_path_error_status(void);
+void set_user_error_status(void);
+void set_fatal_error_status(void);
 
 #endif

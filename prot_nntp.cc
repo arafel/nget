@@ -1,6 +1,6 @@
 /*
     prot_nntp.* - nntp protocol handler
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,11 +24,16 @@
 #include <list.h>
 #include <stdio.h>
 #include "sockstuff.h"
+
+#ifndef PROTOTYPES
+#define PROTOTYPES //required for uudeview.h to prototype function args.
+#endif
 #ifdef HAVE_UUDEVIEW_H
 #include <uudeview.h>
 #else
 #include "uudeview.h"
 #endif
+
 #include "misc.h"
 #include <stdlib.h>
 #include <errno.h>
@@ -320,7 +325,8 @@ void c_prot_nntp::nntp_group(c_group_info::ptr ngroup, int getheaders){
 //	grange=new c_nrange(nghome + "/" + group + "_r");
 
 	midinfo=new c_mid_info((nghome + group->group + ",midinfo"));
-	gcache=new c_nntp_cache(nghome,group->group + ",cache");
+	//gcache=new c_nntp_cache(nghome,group->group + ",cache");
+	gcache=new c_nntp_cache(nghome, group);
 	groupselected=0;
 	if (getheaders){
 		if (force_host){
@@ -803,9 +809,10 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &temppath, co
 				}
 				UUCleanUp();
 			}
-			if (derr>0)
+			if (derr>0){
+				set_decode_error_status();
 				printf(" %i decoding errors occured, keeping temp files.\n",derr);
-			else if (derr<0 && fnbuf.size())
+			}else if (derr<0 && fnbuf.size())
 				printf("download error occured, keeping temp files.\n");
 			else if (un==0){
 				printf("hm.. nothing decoded.. keeping temp files\n");

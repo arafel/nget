@@ -1,6 +1,6 @@
 /*
     litenntp.* - ngetlite nntp protocol handler
-    Copyright (C) 2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 2000-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ int c_prot_nntp::getreply(int echo){
 	return code;
 }
 
-#define tempfilename "ngetlite.tmp"
+#define tempfilename_base "ngetlite"
 
 void c_prot_nntp::doarticle(ulong anum,ulong bytes,ulong lines,const char *outfile){
 	chkreply(stdputline(debug>=DEBUG_MED,"ARTICLE %li",anum));
@@ -112,6 +112,8 @@ void c_prot_nntp::doarticle(ulong anum,ulong bytes,ulong lines,const char *outfi
 	int header=1;
 	long glr;
 	char *lp;
+	char tempfilename[100];
+	sprintf(tempfilename,"%s.%i",tempfilename_base,getpid());
 	FILE *f=fopen(tempfilename,"w");
 	if (f==NULL)
 		throw new c_error(EX_A_FATAL,"nntp_doarticle:%lu fopen %s(%i)",anum,strerror(errno),errno);
@@ -144,7 +146,8 @@ void c_prot_nntp::doarticle(ulong anum,ulong bytes,ulong lines,const char *outfi
 		long d=donetime-starttime;
 		printf("got article %lu in %li sec, %li B/s (%lu/%lu lines, %lu/%lu bytes, %s)",anum,d,d?rbytes/(d):0,rlines,lines,rbytes,bytes,outfile);
 		if (rlines!=lines)printf(" Warning! lines not equal to expected!");
-		if (rbytes!=bytes)printf(" bne!");
+		//if (rbytes!=bytes)printf(" bne!");
+		if ((rbytes > bytes + 3) || (rbytes + 3 < bytes)) printf(" bne!");
 		printf("\n");
 		fflush(stdout);
 	}

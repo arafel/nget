@@ -1,6 +1,6 @@
 /*
     file.* - file io classes
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -144,7 +144,8 @@ class c_file_fd : public c_file {
 	virtual int doclose(void);
   public:
 	virtual int isopen(void);
-	int open(const char *name,int flags,int mode=0);
+	int open(const char *name,int flags,int mode=S_IRWXU|S_IRWXG|S_IRWXO);
+	int open(const char *host,const char * mode);
 	int dup(int dfd);
 	c_file_fd(void){fd=-1;};
 	~c_file_fd(){close();};

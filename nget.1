@@ -1,4 +1,4 @@
-.TH nget 1 "05 Sep 2000"
+.TH nget 1 "21 Jan 2001"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -114,7 +114,7 @@ where data is any number of options.
 .P
 Global options that can be specified are: 
 .br
-Integral: limit, tries, debug, delay
+Integral: limit, tries, debug, delay, usegz(-1=default, 0=uncompressed, 1-9=gzip compression level)
 .br
 Float: curservmult
 .br
@@ -210,7 +210,8 @@ with prios 1.2 or above will be selected.
 .B }
 .P
 Newsgroup aliases are defined in the galias section.  An alias can be a simple
-alias=fullname data item, or  a subsection containing group= and prio= items.
+alias=fullname data item, or  a subsection containing group=, prio=, and usegz= items.
+The per-group usegz setting will override the global setting.
 .br
 For example, the following galias section defines an alias of "abpl" for the
 group "alt.binaries.pictures.linux", and "chocobo" for the group "alt.chocobo".

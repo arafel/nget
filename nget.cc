@@ -1,6 +1,6 @@
 /*
     nget - command line nntp client
-    Copyright (C) 1999-2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 1999-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,34 @@ extern "C" {
 #include "nget.h"
 #include "datfile.h"
 #include "myregex.h"
+
+
+#define decode_ERROR 1
+#define path_ERROR 2
+#define user_ERROR 4
+#define fatal_ERROR 128
+static int errflags=0;
+#define SET_x_ERROR_STATUS(type) static int err_ ## type;\
+void set_ ## type ## _error_status(void){\
+	err_ ## type++;\
+	errflags|=type ##_ERROR;\
+}
+SET_x_ERROR_STATUS(decode)
+SET_x_ERROR_STATUS(path)
+SET_x_ERROR_STATUS(user)
+SET_x_ERROR_STATUS(fatal)
+#define print_x_STATUS(type) if (err_ ## type) printf(" %i " #type, err_ ##type)
+void print_error_status(void){
+	if (errflags){
+		printf("ERRORS:");
+		print_x_STATUS(decode);
+		print_x_STATUS(path);
+		print_x_STATUS(user);
+		print_x_STATUS(fatal);
+		printf("\n");
+	}
+}
+
 
 time_t lasttime;
 
@@ -138,8 +166,8 @@ static void addoptions(void)
 	addoption(NULL,0,0,NULL,NULL);
 };
 static void print_help(void){
-      printf("nget v0.13.1 - nntp command line fetcher\n");
-      printf("Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>\n");
+      printf("nget v0.13.2 - nntp command line fetcher\n");
+      printf("Copyright 1999-2001 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
 it under the terms of the GNU General Public License as published by\n\
@@ -211,7 +239,7 @@ c_prot_nntp nntp;
 static void term_handler(int s){
 	printf("\nterm_handler: signal %i, shutting down.\n",s);
 	nntp.cleanup();
-	exit(0);
+	exit(errflags);
 }
 
 
@@ -398,9 +426,10 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 				//case 1:
 				case 'R':
 					if (!options.badskip){
-						if(options.group.isnull())
+						if(options.group.isnull()){
 							printf("no group specified\n");
-						else{
+							set_user_error_status();
+						}else{
 							generic_pred *p=make_pred(loptarg);
 							if (p){
 								nntp.filec=nntp.gcache->getfiles(nntp.filec,nntp.midinfo,p,options.gflags);
@@ -412,9 +441,10 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 					break;
 				case 'r':
 					if (!options.badskip){
-						if(options.group.isnull())
+						if(options.group.isnull()){
 							printf("no group specified\n");
-						else{
+							set_user_error_status();
+						}else{
 							/*c_regex_nosub *reg=new c_regex_nosub(loptarg,REG_EXTENDED + ((gflags&GETFILES_CASESENSITIVE)?0:REG_ICASE));
 							  if (!reg)
 							  throw new c_error(EX_A_FATAL,"couldn't allocate regex");
@@ -517,6 +547,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 						printf("temppath:%s\n",options.temppath.c_str());
 					}else{
 						printf("could not change temppath to %s\n",loptarg);
+						set_path_error_status();
 						return -1;
 					}
 					break;
@@ -528,6 +559,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 							printf("path:%s\n",options.path.c_str());
 						}else{
 							printf("could not change to %s\n",i==0?options.startpath.c_str():loptarg);
+							set_path_error_status();
 							return -1;
 						}
 					}
@@ -535,7 +567,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 				case 'F':
 					{
 						c_server* server=nconfig.getserver(loptarg);
-						if (!server) {printf("no such server %s\n",loptarg);break;}
+						if (!server) {printf("no such server %s\n",loptarg);set_user_error_status();break;}
 						c_nntp_server_info* servinfo=nntp.gcache->getserverinfo(server->serverid);
 
 						nntp.gcache->flushlow(servinfo,ULONG_MAX,nntp.midinfo);
@@ -578,7 +610,10 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 										if(!(pr=poptParseArgvString(f.rbufp(),&larg.argc,POPT_ARGV_p_T &larg.argv))){
 											arglist.push_back(larg);
 											totargc+=larg.argc;
-										}else printf("poptParseArgvString:%i\n",pr);
+										}else {
+											printf("poptParseArgvString:%i\n",pr);
+											set_user_error_status();
+										}
 									}
 									f.close();
 									if (!arglist.empty()){
@@ -603,6 +638,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 											printf("path:%s\n",options.path.c_str());
 										}else{
 											printf("could not change to %s\n",options.path.c_str());
+											set_path_error_status();
 											return -1;
 										}
 										for (it=arglist.begin();it!=arglist.end();++it)
@@ -611,6 +647,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 									}
 								}else{
 									printf("error opening %s: %s(%i)\n",filename?:loptarg,strerror(errno),errno);errno=0;
+									set_user_error_status();
 								}
 								if (filename && filename!=loptarg)
 									free(const_cast<char*>(filename));//const_cast away the warning
@@ -641,6 +678,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 										 if (options.host==NULL){
 											 options.badskip=2;
 											 printf("invalid host %s (must be configured in .ngetrc first)\n",loptarg);
+											 set_user_error_status();
 										 }
 										 else
 											 options.badskip=0;
@@ -680,7 +718,8 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 			}else{
 				if (n==EX_A_FATAL){
 					printf(" (fatal application error, exiting..)\n");
-					exit(-1);
+					set_fatal_error_status();
+					exit(errflags);
 				}else{
 					printf(" (fatal, aborting..)\n");
 					if (n==EX_T_FATAL)
@@ -704,7 +743,9 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 	poptFreeContext(optCon);
 #endif
 }
+
 int main(int argc, char ** argv){
+	atexit(print_error_status);
 	try {
 		//	atexit(cache_dbginfo);
 		//string hi="aoeu";
@@ -719,13 +760,15 @@ int main(int argc, char ** argv){
 		{
 			char *home;
 			home=getenv("NGETHOME");
-			if (home)
+			if (home) {
 				nghome=home;
-			else {
+				nghome.append("/");
+			} else {
 				home=getenv("HOME");
 				if (!home){
-					printf("HOME environment var not set.");
-					exit(1);
+					printf("HOME or NGETHOME environment var not set.");
+					set_fatal_error_status();
+					exit(errflags);
 				}
 				nghome=home;
 				nghome.append("/.nget3/");
@@ -764,7 +807,7 @@ int main(int argc, char ** argv){
 					fprintf (stderr,"no halias section (or no ngetrc at all), please configure first. (see man nget)\n");
 					return 1;
 				}
-				nconfig.setlist(halias,hpriority,galias);
+				nconfig.setlist(&cfg.data,halias,hpriority,galias);
 				const char *cp=cfg.data.getitema("curservmult");
 				float f;
 				if (cp){
@@ -811,6 +854,6 @@ int main(int argc, char ** argv){
 		printf("caught unknown exception\n");
 	}
 
-	return 0;
+	return errflags;
 }
 

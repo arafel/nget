@@ -1,6 +1,6 @@
 /*
     lite.* - ngetlite main files
-    Copyright (C) 2000  Matthew Mueller <donut@azstarnet.com>
+    Copyright (C) 2000-2001  Matthew Mueller <donut@azstarnet.com>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,8 +35,8 @@ int curfd=-1;
 c_prot_nntp nntp;
 
 void showhelp(void){
-	printf("ngetlite v0.13 - 'lite' nntp fetcher for nget\n"
-			"Copyright 2000 Matt Mueller <donut@azstarnet.com>\n");
+	printf("ngetlite v0.13.2 - 'lite' nntp fetcher for nget\n"
+			"Copyright 2000-2001 Matt Mueller <donut@azstarnet.com>\n");
 	printf("USAGE: ngetlite <listfiles ...>\n");
 	printf("listfiles are generated with nget and the -w <listfile> param\n");
 	exit (0);
