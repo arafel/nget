@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <utime.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -89,25 +88,6 @@ int dofopen(FILE * &f,const char * name,const char * mode,int domiscquiet=0) {
 	return 0;
 }
 
-int dobackup(const char * name){
-	//###### TODO: use crope/basic_string?
-//   char buf[FTP_PATH_LEN];
-	char buf[256];
-	assert(strlen(name)+1<sizeof(buf));
-	strcpy(buf,name);
-	strcat(buf,"~");
-	return rename(name,buf);
-}
-
-const char * getfname(const char * src){
-	int i=strlen(src)-1;
-	if (i<0) i=0;
-	while ((i>0)&&(src[i-1]!='/'))
-		i--;
-	return &src[i];
-}
-
-
 int fexists(const char * f){
 	struct stat statbuf;
 	return (!stat(f,&statbuf));
@@ -163,14 +143,6 @@ char *goodgetcwd(char **p){
 	return *p;
 }
 
-int do_utime(const char *f,time_t t){
-	struct utimbuf buf;
-	buf.actime=t;
-	buf.modtime=t;
-	return utime(f,&buf);
-}
-
-
 
 size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr, int local) {
 //	static char timestr[80];
@@ -183,50 +155,6 @@ size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr, in
 //	return timestr;
 }
 
-char txt_exts[]=".txt.cpp.c.cc.h.pas.htm.html.pl.tcl";
-int is_text(const char * f){
-	char *t,*s;
-	t=strrchr(f,'.');
-	if (t==NULL)return 0;
-//   if ((s=strstr(cfg.txt_exts,t))){
-	if ((s=strstr(txt_exts,t))){
-		switch (s[strlen(t)]){
-			case '.':case 0:
-				return 1;
-		}
-	}
-	return 0;
-}
-
-//MDTM INDEX.txt
-//213 19951006235406
-time_t decode_mdtm(const char * cbuf){
-	char buf[5];
-	struct tm tblock;
-	memset(&tblock,0,sizeof(struct tm));
-
-	buf[4]=0;
-	strncpy(buf,cbuf,4);
-	tblock.tm_year=atoi(buf)-1900;
-
-	buf[2]=0;
-	strncpy(buf,cbuf+4,2);
-	tblock.tm_mon=atoi(buf)-1;
-
-	strncpy(buf,cbuf+6,2);
-	tblock.tm_mday=atoi(buf);
-
-	strncpy(buf,cbuf+8,2);
-	tblock.tm_hour=atoi(buf);
-
-	strncpy(buf,cbuf+10,2);
-	tblock.tm_min=atoi(buf);
-
-	strncpy(buf,cbuf+12,2);
-	tblock.tm_sec=atoi(buf);
-
-	return mktime(&tblock)+my_timezone;
-}
 
 char *text_month[13]={"Jan", "Feb", "Mar", "Apr",
 	"May", "Jun", "Jul", "Aug",
@@ -499,11 +427,6 @@ time_t decode_textdate(const char * cbuf){
 	return mktime(&tblock)-my_timezone-td_tz;
 }
 #endif
-
-void setint0 (int *i){
-	PDEBUG(DEBUG_MED, "setint0 %p",i);
-	*i=0;
-}
 
 #ifdef	USE_FILECOMPARE					// check for duplicate files
 int filecompare(const char *old_fn,const char *nfn){

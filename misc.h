@@ -21,7 +21,6 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-//misc.h
 
 #include <time.h>
 #include <sys/types.h>
@@ -32,30 +31,18 @@ void init_my_timezone(void);//must be called before decode_(mdtm|textdate)
 int doopen(int &handle,const char * name,int access,int mode=0);
 int dofopen(FILE * &f,const char * name,const char * mode,int domiscquiet=0);
 
-int dobackup(const char * name);
-
 int fexists(const char * f);
 #define FSEARCHPATH_ALLOWDIRS 1 //search for f in the paths even if it contains a slash
 const char *fsearchpath(const char * f,const char **paths,int flags);
 int testmkdir(const char * dir,int mode);
 char *goodgetcwd(char **p);
 
-const char * getfname(const char * src);
-
-int do_utime(const char *f,time_t t);
-
 #define TCONV_DEF_BUF_LEN 60
-// formatstr="%m-%d-%y %H:%M"
 size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%Y%m%dT%H%M%S", int local=1);
 
-int is_text(const char * f);
-
-time_t decode_mdtm(const char * cbuf);
 time_t decode_textdate(const char * cbuf, bool local=true);
 int decode_textmonth(const char * buf);
 int decode_texttz(const char * buf);
-
-void setint0 (int *i);
 
 #ifdef	USE_FILECOMPARE					// check for duplicate files
 int filecompare(const char *old_fn,const char *nfn);
