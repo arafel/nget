@@ -1,4 +1,4 @@
-.TH nget 1 "12 Jun 1999"
+.TH nget 1 "18 Jun 1999"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -7,6 +7,13 @@ nget \- retrieve files from NNTP hosts
 .B nget
 retrieves messages matching a regular expression, and decodes any files
 contained within.  Multipart messages are automatically pieced together.
+.P
+Servers requiring authentication are accessable by specifying the host such as
+-h "hostname user pass".  However, this will make your user and password
+visable to other users on the system, and is annoying to type.  So you should
+instead place a file called ".authinfo" within the cache directory
+(ex: ~/.nget/hostname/.authinfo), the first line being the username and the
+second being the password.
 .SH EXAMPLES
 get listing of all files matching penguin*.png from alt.binaries.pictures.linux:
 .br

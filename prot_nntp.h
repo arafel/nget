@@ -4,8 +4,8 @@
 #include "config.h"
 #endif
 
+//#include <string>
 #include "cache.h"
-#include <string>
 #include "file.h"
 #include <stdarg.h>
 
@@ -27,11 +27,12 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 		int authed;
 		c_file_tcp sock;
 		string host;
-		const char *user,*pass;
+//		const char *user,*pass;
+		string user, pass;
 		string group;
 		int groupselected;
-		c_cache *gcache;
-		c_nntp_file_cache_u *filec;
+		c_nntp_cache *gcache;
+		c_nntp_files_u *filec;
 		time_t starttime;
 
 		int stdputline(int echo,const char * str,...);

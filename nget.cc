@@ -81,7 +81,7 @@ void addoption(char *longo,int needarg,char shorto,char *adesc,char *desc){
 	cur++;
 }
 void print_help(void){
-      printf("nget v0.5 - nntp command line fetcher\n");
+      printf("nget v0.6 - nntp command line fetcher\n");
       printf("Copyright 1999 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -136,9 +136,10 @@ int main(int argc,char ** argv){
 	addoption("group",1,'g',"GROUPNAME","newsgroup");
 	addoption("quickgroup",1,'G',"GROUPNAME","use group without checking for new headers");
 	addoption("retrieve",1,'r',"REGEX","retrieve files matching regex");
+//	addoption("mark",1,'m',"MARKNAME","name of high water mark to test files against");
 //	addoption("testretrieve",1,'R',"REGEX","test what would have been retrieved");
 	addoption("testmode",0,'T',0,"test what would have been retrieved");
-	addoption("tries",1,'t',"INT","set max retries (-1 unlimits, default 10)");
+	addoption("tries",1,'t',"INT","set max retries (-1 unlimits, default 20)");
 	addoption("limit",1,'l',"INT","min # of lines a 'file' must have(default 3)");
 	addoption("incomplete",0,'i',0,"retrieve files with missing parts");
 	addoption("complete",0,'I',0,"retrieve only files with all parts(default)");
@@ -160,7 +161,7 @@ int main(int argc,char ** argv){
 		print_help();
 	}
 	else {
-		int redo=0,redone=0,maxretry=10,badskip=0,linelimit=3,gflags=0,testmode=0,qstatus=0;
+		int redo=0,redone=0,maxretry=20,badskip=0,linelimit=3,gflags=0,testmode=0,qstatus=0;
 		while (1){
 			if (redo){
 				redo=0;

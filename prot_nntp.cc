@@ -1,8 +1,9 @@
 #ifdef HAVE_CONFIG_H 
 #include "config.h"
 #endif
-#include <stdio.h>
 #include "prot_nntp.h"
+#include <list.h>
+#include <stdio.h>
 #include "sockstuff.h"
 #include "uudeview.h"
 #include "misc.h"
@@ -12,7 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "log.h"
-
+#include "file.h"
 extern time_t lasttime;
 extern string nghome;
 
@@ -115,7 +116,6 @@ inline void c_prot_nntp::nntp_print_retrieving_headers(long lll,long hhh,long cc
 void c_prot_nntp::doxover(int low, int high){
 	char *p;
 	time_t curt,lastt=0;
-	c_nntp_cache_item*c=NULL;
 	char *t[10];
 	long bytes=0,realnum=0;
 	int i,lowest=-1,dcounter=0,dtrip=10,dtripmax=50,dtripmin=2,dtripdiv=50;
@@ -129,6 +129,8 @@ void c_prot_nntp::doxover(int low, int high){
 	time(&starttime);
 	time(&curt);
 	//stdgetreply(debug);
+	unsigned long an=0;
+	c_nntp_header nh;
 	do {
 		bytes+=getline(debug);
 		if (cbuf[0]=='.')break;
@@ -140,11 +142,16 @@ void c_prot_nntp::doxover(int low, int high){
 			//				printf("%i:%s\n",i,t[i]);
 		}
 		if (i>=7){
-			c=new c_nntp_cache_item(atol(t[0]),	decode_textdate(t[3]), atol(t[6]), atol(t[7]),t[1],t[2]);
-			gcache->additem(c);
+		//	c=new c_nntp_cache_item(atol(t[0]),	decode_textdate(t[3]), atol(t[6]), atol(t[7]),t[1],t[2]);
+			//gcache->additem(c);
+			an=atol(t[0]);
+			nh.set(t[1],t[2],an,decode_textdate(t[3]),atol(t[6]),atol(t[7]));
+			//gcache->additem(an, decode_textdate(t[3]), atol(t[6]), atol(t[7]),t[1],t[2]);
+			gcache->additem(&nh);
+			//delete nh;
 			realnum++;
 			if (lowest==-1){
-				lowest=c->num;
+				lowest=an;
 				dtrip=(high-lowest)/dtripdiv;
 				if (dtrip>dtripmax)
 					dtrip=dtripmax;
@@ -154,14 +161,14 @@ void c_prot_nntp::doxover(int low, int high){
 			dcounter++;
 			time(&curt);
 			if (!quiet && dcounter>=dtrip && curt>lastt){
-				nntp_print_retrieving_headers(lowest,high,c->num,bytes);
+				nntp_print_retrieving_headers(lowest,high,an,bytes);
 				dcounter=0;
 				time(&lastt);
 			}
 		}
 	}while(1);
-	if(!quiet && c){
-		nntp_print_retrieving_headers(lowest,high,c->num,bytes);
+	if(!quiet && an){
+		nntp_print_retrieving_headers(lowest,high,an,bytes);
 		printf("(%li)\n",realnum);
 	}
 }
@@ -176,7 +183,7 @@ void c_prot_nntp::nntp_dogroup(int getheaders){
 //	stdgetreply(1);
 	groupselected=1;
 	char *p;
-	int num,low,high;
+	unsigned num,low,high;
 	p=strchr(cbuf,' ')+1;
 	num=atoi(p);
 	p=strchr(p,' ')+1;
@@ -199,7 +206,7 @@ void c_prot_nntp::nntp_group(const char *ngroup, int getheaders){
 	group=ngroup;
 //	if (gcache) delete gcache;
 	cleanupcache();
-	gcache=new c_cache(nghome,host,group);
+	gcache=new c_nntp_cache(nghome,host,group);
 	groupselected=0;
 	if (getheaders)
 		nntp_dogroup(getheaders);
@@ -293,6 +300,10 @@ int c_prot_nntp::nntp_doarticle(arinfo*ari,arinfo*toti,char *fn){
 	return 0;
 }
 
+int uu_info_callback(void *v,char *i){
+	printf("info:%s",i);
+	return 0;
+};
 void uu_msg_callback(void *v,char *m,int t){
 	if (quiet && (t==UUMSG_MESSAGE || t==UUMSG_NOTE))
 		return;
@@ -308,27 +319,42 @@ int uu_busy_callback(void *v,uuprogress *p){
 void c_prot_nntp::nntp_queueretrieve(const char *match, int linelimit, int getflags){
 	if (!(filec=gcache->getfiles(filec,match,linelimit,getflags)))
 		throw new c_error(EX_U_WARN,"nntp_retrieve: no match for %s",match);
+//	filec=NULL;//#########
 }
+
 void c_prot_nntp::nntp_retrieve(int doit){
-	if (!(filec) || filec->files.size()<=0)
+	if (!(filec) || filec->files.empty())
 		return;
 	
 	t_nntp_files_u::iterator curf;
-	c_nntp_file_u *f;
+	c_nntp_file *f;
+
 	if (!doit){
-		c_nntp_cache_item *i;
+		c_nntp_part *p;
 		for(curf = filec->files.begin();curf!=filec->files.end();++curf){
 			f=(*curf).second;
-//			p=f->parts.begin()->second;
-			i=gcache->items[f->banum];
+			p=(*f->parts.begin()).second;
 			//printf("%i/%i\t(%liB,%lil)\t%li\t%s\n",f->have,f->req,f->bytes,f->lines,p->i->date,p->i->subject.c_str());
-			printf("%i/%i\t%lil\t%li\t%s\t%s\n",f->have,f->req,f->lines,i->date,i->subject.c_str(),i->email.c_str());
+			printf("%li\t%i/%i\t%lil\t%li\t%s\t%s\n",p->articlenum,f->have,f->req,f->lines,p->date,f->subject.c_str(),f->author.c_str());
 		}
 	}
-	
-	delete gcache;gcache=NULL;//we don't need this anymore, so free up some (a lot) of mem
+//well, now we need to keep it around again, so we can set the read flag.  At least with the new cache implementation its not quite such a memory hog.
+//	if (gcache){
+//		delete gcache;gcache=NULL;//we don't need this anymore, so free up some (a lot) of mem
+//	}
 
 	if (doit){
+#ifdef SHORT_TEMPNAMES
+		t_id group_id;
+# ifdef CHECKSUM
+		group_id=CHECKSUM(0L, Z_NULL, 0);
+		//group_id=CHECKSUM(group_id,host.c_str(),host.size());
+		group_id=CHECKSUM(group_id,(Byte*)group.c_str(),group.size());
+# else
+		hash<const char*> H;
+		group_id=H(group.c_str());
+# endif
+#endif
 		arinfo qtotinfo,ainfo;
 		time(&qtotinfo.starttime);
 		qtotinfo.linesdone=0;
@@ -336,15 +362,15 @@ void c_prot_nntp::nntp_retrieve(int doit){
 		qtotinfo.linestot=filec->files.size();
 		qtotinfo.bytesdone=0;
 		qtotinfo.bytestot=filec->bytes;
-		s_part_u *p;
+		c_nntp_part *p;
 //		s_part_u *bp;
-		t_nntp_file_u_parts::iterator curp;
+		t_nntp_file_parts::iterator curp;
 		t_nntp_files_u::iterator lastf=filec->files.end();
 		char *fn;
 		for(curf = filec->files.begin();curf!=filec->files.end();++curf){
 			int r;
 			if (lastf!=filec->files.end()){
-				delete (*lastf).second;
+//				delete (*lastf).second;//new cache implementation uses pointers to the same data
 				filec->files.erase(lastf);
 				qtotinfo.linesdone++;
 			}
@@ -358,24 +384,32 @@ void c_prot_nntp::nntp_retrieve(int doit){
 				//asprintf(&fn,"%s/%s-%s-%li-%li-%li",nghome.c_str(),host.c_str(),group.c_str(),fgnum,part,num);
 				p=(*curp).second;
 				if (derr){
-					qtotinfo.bytestot-=p->size;
+					qtotinfo.bytestot-=p->bytes;
 					continue;
 				}
-				asprintf(&fn,"./%s-%s-%li-%03li-%li",host.c_str(),group.c_str(),f->banum,(*curp).first,p->anum);
+#ifdef SHORT_TEMPNAMES
+				//asprintf(&fn,"./%lx-%lx.%03li-%li",group_id,f->sub_id,(*curp).first,p->anum);
+				//asprintf(&fn,"./%lx-%lx.%03li",group_id,H(f->subject.c_str()),(*curp).first);
+				asprintf(&fn,"./%lx-%lx.%03li",group_id,f->mid,(*curp).first);
+#else
+				asprintf(&fn,"./%s-%s-%li-%03li-%li",host.c_str(),group.c_str(),f->banum(),(*curp).first,p->articlenum);
+#endif
 				if (!fexists(fn)){
-					ainfo.anum=p->anum;
+					ainfo.anum=p->articlenum;
 					ainfo.linesdone=0;
 					ainfo.bytesdone=0;
 					ainfo.linestot=p->lines;
-					ainfo.bytestot=p->size;
+					ainfo.bytestot=p->bytes;
 					if (nntp_doarticle(&ainfo,&qtotinfo,fn)){
 						delete fn;
-						qtotinfo.bytestot-=p->size;
-						derr=-1;//######skip this file..
+						qtotinfo.bytestot-=p->bytes;
+						derr=-1;//skip this file..
 						continue;
 					}
-				}else
-					qtotinfo.bytestot-=p->size;
+				}else{
+					qtotinfo.bytestot-=p->bytes;
+					printf("already have article %li\n",p->articlenum);
+				}
 //				UULoadFile(fn,NULL,0);//load once they are all d/l'd
 				//				delete fn;
 				fnbuf.push_back(fn);
@@ -402,24 +436,53 @@ void c_prot_nntp::nntp_retrieve(int doit){
 						continue;
 					}
 					//				printf("\ns:%x d:%x\n",uul->state,uul->uudet);
-					if (uul->uudet==PT_ENCODED && strcmp(uul->filename,"0001.txt")==0){
+					if (/*uul->uudet==PT_ENCODED &&*/ strcmp(uul->filename,"0001.txt")==0){
 						char *nfn;
-						asprintf(&nfn,"%i.txt",f->banum);//give it a (somewhat) more sensible name
+						asprintf(&nfn,"%i.txt",f->banum());//give it a (somewhat) more sensible name
 						UURenameFile(uul,nfn);
 						delete nfn;
-					}
+					}else
+						r=UUInfoFile(uul,NULL,uu_info_callback);
 					r=UUDecodeFile(uul,NULL);
 					if (r==UURET_EXISTS){
 						char *nfn;
-						asprintf(&nfn,"%s.%i.%i",uul->filename,f->banum,rand());
+						asprintf(&nfn,"%s.%i.%i",uul->filename,f->banum(),rand());
+#ifdef	USE_SMW					// We have a duplicate file name
+						// memorize the old file name
+						char	*old_fn;
+						asprintf(&old_fn,"%s",uul->filename);
+						// Generate a new filename to use
 						UURenameFile(uul,nfn);
-						delete nfn;
 						r=UUDecodeFile(uul,NULL);
+						// did it decode correctly?
+						if (r == UURET_OK){
+							// if identical, delete the one we just downloaded
+							if (filecompare(old_fn,nfn) > 0){
+								printf("Duplicate File Removed %s\n", nfn);
+								unlink(nfn);
+							}
+						}
+						// cleanup
+						delete	old_fn;
+
+#else	/* USE_SMW */				// the orginal code
+						UURenameFile(uul,nfn);
+						r=UUDecodeFile(uul,NULL);
+#endif	/* USE_SMW */
+						delete nfn;
 					}
 					if (r!=UURET_OK){
 						derr++;
 						printf("decode(%s): %s\n",uul->filename,UUstrerror(r));
 						continue;
+					}else{
+//						printf("flags %lx",f->flags);
+						if (!(f->flags&FILEFLAG_READ)){//if the flag is already set, don't force a save
+//							printf("&=%i",FILEFLAG_READ);
+							f->flags|=FILEFLAG_READ;
+							gcache->saveit=1;//make sure the flags get saved, even if the header file hasn't changed otherwise
+						}
+//						printf("->%lx\n",f->flags);
 					}
 				}
 				UUCleanUp();
@@ -442,7 +505,23 @@ void c_prot_nntp::nntp_retrieve(int doit){
 	delete filec;filec=NULL;
 }
 void c_prot_nntp::nntp_auth(void){
-	nntp_doauth(user,pass);
+	if (user.size()<=0){
+		string fn=nghome+"/"+host+"/.authinfo";
+		c_file_stream f;
+		f.initrbuf(256);
+		if (!f.open(fn.c_str(),"r")){
+//			char buf[256];
+			if (f.bgets()){
+				user=f.rbufp;
+				if (f.bgets()){
+//					buf[strlen(buf)]=0;
+					pass=f.rbufp;
+				}
+			}
+			f.close();
+		}
+	}
+	nntp_doauth(user.c_str(),pass.c_str());
 }
 void c_prot_nntp::nntp_doauth(const char *user, const char *pass){
 	int i;
@@ -458,7 +537,8 @@ void c_prot_nntp::nntp_doauth(const char *user, const char *pass){
 			nntp_close();
 			throw new c_error(EX_U_FATAL,"nntp_doauth: no password known");
 		}
-		putline(1,"AUTHINFO PASS %s",pass);
+		putline(0,"AUTHINFO PASS %s",pass);
+		printf(">AUTHINFO PASS *\n");
 		i=getreply(1);
 	}
 	chkreply(i);
@@ -468,8 +548,10 @@ void c_prot_nntp::nntp_doauth(const char *user, const char *pass){
 void c_prot_nntp::nntp_open(const char *h,const char *u,const char *p){
 	nntp_close();
 	host=h;
-	user=u;
-	pass=p;
+	if (u)
+		user=u;
+	if (p)
+		pass=p;
 }
 
 void c_prot_nntp::nntp_doopen(void){
@@ -483,7 +565,8 @@ void c_prot_nntp::nntp_doopen(void){
 	//	if((ch=make_connection("nntp",SOCK_STREAM,host.c_str(),NULL,cbuf,cbuf_size))<0){
 		if((i=sock.open(host.c_str(),"nntp"))<0){
 			//throw -1;
-			throw new c_error(EX_T_FATAL,"make_connection:%i %s(%i)",i,strerror(errno),errno);
+			//throw new c_error(EX_T_FATAL,"make_connection:%i %s(%i)",i,strerror(errno),errno);
+			throw new c_error(EX_T_ERROR,"make_connection:%i %s(%i)",i,strerror(errno),errno);
 		}
 		chkreply(getreply(1));
 		putline(debug,"MODE READER");

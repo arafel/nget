@@ -10,6 +10,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#ifndef HAVE_ATOUL
+inline ulong atoul(const char *str){return strtoul(str,NULL,10);}
+#endif
 
 #ifndef HAVE_STRERROR
 const char * strerror(int err);
@@ -41,4 +46,9 @@ int decode_textmonth(const char * buf);
 int decode_texttz(const char * buf);
 
 void setint0 (int *i);
+
+#ifdef	USE_SMW					// check for duplicate files
+int filecompare(const char *old_fn,const char *nfn);
+#endif
+
 #endif

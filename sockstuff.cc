@@ -107,7 +107,6 @@ int make_connection(const char *defservice, int type,const char *netaddress,cons
 	unsigned char *i;
 	i=(unsigned char *)&addr->s_addr;
 	PMSG("Connecting to %i.%i.%i.%i:%i",i[0],i[1],i[2],i[3],ntohs(port));
-	//   interface.i_draw();//###damn blocking stuff.  guh. <-- fixed. yay!
 
 	memset((char *) &address, 0, sizeof(address));
 	address.sin_family = AF_INET;

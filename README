@@ -1,4 +1,4 @@
-nget 0.5  Copyright 1999 Matt Mueller <donut@azstarnet.com>
+nget 0.6  Copyright 1999 Matt Mueller <donut@azstarnet.com>
 
 Install:
 0) if you have uulib as a shared lib: ./configure and skip to step 2
@@ -13,11 +13,14 @@ Install:
 2) make 
 3) make install
 
+(./configure --help will show extra options not described here)
+
 nget is developed on linux (glibc2), and compiles without modifications on
 linux libc5 and freebsd 2.2.8(did need the CXXFLAGS env to be set as outlined
 above though, if someone has an autoconf test for wether a flag is needed to
 enable exceptions, I'd appreciate it).  It should probably work on other
 systems with little or no modifications.
+
 
 Copying:
 This program is free software; you can redistribute it and/or modify

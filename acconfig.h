@@ -4,20 +4,25 @@
 /* check consistancy */
 #undef DEBUG_CACHE
 
-/* use text mode cache */
-#undef TEXT_CACHE
-
 /* Define to `int' if <sys/types.h> doesn't define.  */
 #undef socklen_t
+
+/* Define to `unsigned long' if <sys/types.h> doesn't define.  */
+#undef ulong
 
 /* define if `timezone' is an integer var defined in time.h */
 #undef TIMEZONE_IS_VAR
 
+/* use shorter filenames for tempfiles */
+#undef SHORT_TEMPNAMES
+
+/* checksum method to use */
+#undef CHECKSUM
+
+/* compare duplicate files? */
+#undef USE_SMW
+
 @BOTTOM@
 
-/* get rid of stupid undefined errors for (v)asprintf */
-#define _GNU_SOURCE
-
-#ifndef HAVE_SLIST_H
-#define slist list
-#endif
+/* tests for some features that depend on other features */
+#include "_subconf.h"

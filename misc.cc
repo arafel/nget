@@ -8,6 +8,7 @@
 #include "log.h"
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <utime.h>
 #include <errno.h>
@@ -215,12 +216,15 @@ int decode_texttz(const char * buf){
 }
 
 //Tue, 25 May 1999 06:23:23 GMT
+//21 Jun 99 01:58:12
+
 
 //Last-modified: Friday, 13-Nov-98 20:41:28 GMT
 //012345678901234567890123456789
 //Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
 //23 May 1999 22:46:41 GMT ; no textual day
 //25 May 99 01:01:48 +0100 ; 2 digit year
+//21 Jun 99 01:58:12 ; no timezone
 //Mon, 24 May 99 11:53:47 GMT ; 2 digit year
 //3 Jun 1999 12:35:14 -0500 ; non padded day. blah.
 //Tue, 1 Jun 1999 20:36:29 +0100 ; blah again
@@ -232,7 +236,7 @@ int decode_texttz(const char * buf){
 //Jan  4 17:11 			;ls -l format, 17:11 may be replaced by " 1998"
 //c_regex rfc1123("^[A-Za-z, ]*([0-9]{1,2}) (...) ([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (.*)$"),
 //	rfc850("^[A-Za-z, ]*([0-9]{1,2})-(...)-([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (.*)$"),
-c_regex xrfc("^[A-Za-z, ]*([0-9]{1,2})[- ](...)[- ]([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (.*)$"),
+c_regex xrfc("^[A-Za-z, ]*([0-9]{1,2})[- ](...)[- ]([0-9]{2,4}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) *(.*)$"),
 	xasctime("^[A-Za-z, ]*(...) +([0-9]{1,2}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) ([0-9]{2,4}) *(.*)$"),
 	xlsl("^(...) +([0-9]{1,2}) +([0-9:]{4-5})$")
 		;
@@ -402,3 +406,48 @@ void setint0 (int *i){
 	PDEBUG("setint0 %p",i);
 	*i=0;
 }
+
+#ifdef	USE_SMW					// check for duplicate files
+int filecompare(const char *old_fn,const char *nfn){
+	int	same=0;
+	FILE	*old_f, *new_f;
+	// open both files
+	if (!dofopen(old_f, old_fn, "r")){
+		if (!dofopen(new_f, nfn, "r")){
+			char	old_buf[4096], new_buf[4096];
+			int	old_len, new_len;
+			// read and compare the files
+			while(!feof(old_f)&&!ferror(old_f)&&!feof(new_f)&&!ferror(new_f)){
+				old_len=read(fileno(old_f), old_buf, 4096);
+				new_len=read(fileno(new_f), new_buf, 4096);
+				if (old_len == new_len && old_len >= 0){
+					if (old_len == 0){
+						same=1;
+						break;
+					}
+					if (memcmp(old_buf, new_buf, old_len)){
+						same=-1;
+						break;
+					}
+				} else {
+					same=-1;
+					break;
+				}
+			}
+			if (same>=0&&feof(old_f)&&feof(new_f)){
+				// passed all tests!
+				same=1;
+			}
+			fclose(new_f);
+			fclose(old_f);
+		} else {
+			same = -1;
+			fclose(old_f);
+		}
+	} else {
+		same = -1;
+	}
+	return same;
+}
+#endif
+

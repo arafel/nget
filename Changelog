@@ -1,3 +1,25 @@
+nget (0.6) unstable; urgency=low
+
+  * Added "file read" flag to stop redundant downloading.
+  * Watches for a downloaded multipart file being exactly the same as what
+    already exists.  Can be disabled with --disable-filecompare. (Steven Wilcoxon)
+  * Rewrote header cache code, should now use as little as 1/4th the memory
+    depending upon how many multipart messages there are.  Actual disk space
+    saved is less due to zlib compression, but it shouldn't be near as much of
+    a memory hog when running now.  If you are upgrading from a previous
+    version, you will need to reget all your headers.
+  * Reads .authinfo in cache dir so you don't have to put it on the command
+    line.
+  * Optional use of checksum in the filename, rather than
+    host/group/articlenum/etc which takes up a rather large amount of space.
+    Added advantage is that since the filename is now based soley on the group
+    and the subject/author headers, it should be entirely possible to download
+    part of a multipart file from one server and the rest from another!
+  * Implemented use of crc32 checksums to compare headers when piecing together
+    multipart messages, maybe save a bit of cpu power.
+
+ -- Matt Mueller <donut@azstarnet.com>  Fri, 18 Jun 1999 00:09:59 -0700
+
 nget (0.5) unstable; urgency=low
 
   * a bit of fixes to the error recovery stuff.

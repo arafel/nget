@@ -1,144 +1,98 @@
 #ifndef _CACHE_H_
 #define _CACHE_H_
-#ifdef HAVE_CONFIG_H 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <sys/types.h>
 #include <string>
-//#include "mystring.h"
-#include <list.h>
 #include <map.h>
-#include "file.h"
-#ifdef HAVE_CONFIG_H 
-#include "config.h"
-#endif
-#include <time.h>
-class c_nntp_cache_item {
-	public:
-		long num;
-		time_t date;
-		long size,lines;
-//		mystring subject,email;
-		string subject,email;
-		int storei(c_file *f);
-#ifdef TEXT_CACHE
-		static c_nntp_cache_item* loadi(char *s);
+#ifdef HAVE_HASH_MAP_H
+#include <hash_map.h>
 #else
-		static c_nntp_cache_item* loadi(long l,c_file *f,char *buf);
+#include <multimap.h>
 #endif
-//		c_nntp_cache_item(void){num=-1;};
-		c_nntp_cache_item(long n,time_t d,long s, long l, char * a, char * e);
-		~c_nntp_cache_item();
+#include "file.h"
+
+#define CACHE_VERSION "NGET2"
+
+typedef unsigned long t_id;
+class c_nntp_header {
+	private:
+		int parsepnum(const char *str,const char *soff);
+		void setmid(void);
+	public:
+		int partnum, req;
+		int partoff, tailoff;
+		t_id mid;
+		string subject;
+		string author;
+		ulong articlenum;
+		time_t date;
+		ulong bytes,lines;
+		void set(char *s,const char *a,ulong anum,time_t d,ulong b,ulong l);
+//		c_nntp_header(char *s,const char *a,ulong anum,time_t d,ulong b,ulong l);
 };
 
-typedef map<long,c_nntp_cache_item*,less<long> > t_cache_items;
-//typedef list<c_nntp_cache_item*> t_cache_items;
-
-struct s_part {
-//	long anum,partnum;
-	c_nntp_cache_item *i;//we *don't* want to delete this!
-	long partnum;
-	int partoff,tailoff;
-	int parseitem(c_nntp_cache_item *i);
-	int parsepnum(const char *str,const char *soff);
+class c_nntp_part {
+	public:
+		int partnum;
+		ulong articlenum;
+		time_t date;
+		ulong bytes,lines;
+		c_nntp_part(int pn, ulong an, time_t d, ulong b, ulong l):partnum(pn),articlenum(an),date(d),bytes(b),lines(l){};
+		c_nntp_part(c_nntp_header *h);
 };
 
-struct s_part_u{
-    long partnum;
-	long anum,size,lines;
-	s_part_u (s_part &p);
-};
-//typedef list<s_part> t_nntp_file_parts;
-typedef map<int,s_part*,less<int> > t_nntp_file_parts;
-typedef map<int,s_part_u*,less<int> > t_nntp_file_u_parts;
+
+typedef map<int,c_nntp_part*,less<int> > t_nntp_file_parts;
+
+#define FILEFLAG_READ 1
 
 class c_nntp_file {
 	public:
 		t_nntp_file_parts parts;
 		int req,have;
-		long bytes,lines;
-		//	string name;
-		//	string author;
-		int storef(c_file *f);
-#ifdef TEXT_CACHE
-		int loadf(char *str,t_cache_items *itp);
-#else
-		int loadf(c_file *f,t_cache_items *itp);
-#endif
-		int delitems(long lownum);
-		void addpart(s_part *i);
-		c_nntp_file();
-		c_nntp_file(c_nntp_file &f);
+		ulong bytes,lines;
+		ulong flags;
+		t_id mid;
+		string subject,author;
+		int partoff,tailoff;
+		void addpart(c_nntp_part *p);
+		ulong banum(void){return (*parts.begin()).second->articlenum;}
+		c_nntp_file(c_nntp_header *h);
+		c_nntp_file(int r,ulong f,t_id mi,const char *s,const char *a,int po,int to);
 		~c_nntp_file();
 };
-typedef list<c_nntp_file*> t_nntp_files;
-
-class c_nntp_file_u {
-	public:
-		t_nntp_file_u_parts parts;
-		int req,have;
-		long bytes,lines;
-		long banum;//article number of first part
-		string filename; //what we think the filename is.
-		c_nntp_file_u();
-		c_nntp_file_u(c_nntp_file &f,const char *fn);
-		~c_nntp_file_u();
-};
-typedef map<long, c_nntp_file_u*, less<long> > t_nntp_files_u;
-//typedef list<c_nntp_file_u*> t_nntp_files_u;
-class c_nntp_file_cache_u {
-	public:
-		//c_regex freg;
-		long lines,bytes;
-		t_nntp_files_u files;
-		c_nntp_file_cache_u();
-		~c_nntp_file_cache_u();
-};
-
-class c_nntp_file_cache {
-	public:
-		//c_regex freg;
-		t_nntp_files files;
-#ifdef DEBUG_CACHE
-		void check_consistancy(t_cache_items *itp);
-#endif
-		void additem(c_nntp_cache_item* i);
-		int delitems(long lownum);
-		int store(c_file *f);
-#ifdef TEXT_CACHE
-		c_nntp_file * load(char *str);
+//typedef hash_map<const char*, c_nntp_file*, hash<const char*>, eqstr> t_nntp_files;
+#ifdef HAVE_HASH_MAP_H
+typedef hash_multimap<t_id, c_nntp_file*, hash<t_id>, equal_to<t_id> > t_nntp_files;
 #else
-		void load(long l, c_file *f,t_cache_items *itp);
+typedef multimap<t_id, c_nntp_file*, less<t_id> > t_nntp_files;
 #endif
-		c_nntp_file_cache();
-		~c_nntp_file_cache();
+typedef map<ulong,c_nntp_file*,less<ulong> > t_nntp_files_u;
+class c_nntp_files_u {
+	public:
+		ulong bytes,lines;
+		t_nntp_files_u files;
+		c_nntp_files_u(void):bytes(0),lines(0){}
 };
 
+#define GETFILES_CASESENSITIVE  1
+#define GETFILES_GETINCOMPLETE  2
+#define GETFILES_NODUPECHECK    4
 
-#define GETFILES_CASESENSITIVE	1
-#define GETFILES_GETINCOMPLETE	2
-#define GETFILES_NODUPECHECK	4
-class c_cache {
+class c_nntp_cache {
 	public:
 		string file;
-		int high,low;
+		t_nntp_files files;
+		ulong high,low,num;
 		int saveit;
-		t_cache_items items;
-		c_nntp_file_cache *files;
-//		void initfiles(void);
 		int fileread;
-		void additem(c_nntp_cache_item* i, int do_file_cache=1);
-		c_nntp_file_cache_u * getfiles(c_nntp_file_cache_u *fu,const char *match, int linelimit,int flags);
-		int flushlow(int newlow);
-#ifdef DEBUG_CACHE
-		void check_consistancy(const char *s);
-#endif
-		c_cache(string path,string hid,string nid);
-		~c_cache();
+		//int additem(ulong an,char *s,const char * a,time_t d, ulong b, ulong l){
+		int additem(c_nntp_header *h);
+		ulong flushlow(ulong newlow);
+		c_nntp_files_u* getfiles(c_nntp_files_u * fc,const char *match, unsigned long linelimit,int flags);
+		c_nntp_cache(string path,string hid,string nid);
+		~c_nntp_cache();
 };
-
-
-#ifdef DEBUG_CACHE_DESTRUCTION
-void cache_dbginfo(void);
-#endif
-
 #endif
