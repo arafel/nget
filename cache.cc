@@ -622,6 +622,7 @@ c_nntp_cache::c_nntp_cache(string path,c_group_info::ptr group_):totalnum(0),gro
 c_nntp_cache::~c_nntp_cache(){
 	c_file *f=NULL;
 	t_nntp_files::iterator i;
+	c_nntp_server_info *si;
 	if (saveit && (files.size() || fileread)){
 		string tmpfn;
 		tmpfn=file+".tmp";
@@ -632,16 +633,16 @@ c_nntp_cache::~c_nntp_cache(){
 			t_nntp_file_parts::iterator pi;
 			t_nntp_server_articles::iterator sai;
 			c_nntp_server_article *sa;
-			t_nntp_server_info::iterator sii;
-			c_nntp_server_info *si;
 			c_nntp_part *np;
 			ulong count=0,counta=0;
 			f->putf(CACHE_VERSION"\t%lu\n",totalnum);//mode 2
 			//vv mode 4
-			for (sii = server_info.begin(); sii != server_info.end(); ++sii){
-				si=(*sii).second;
+			while (!server_info.empty()){
+				si=server_info.begin()->second;
 				assert(si);
 				f->putf("%lu\t%lu\t%lu\t%lu\n",si->serverid,si->high,si->low,si->num);//mode 4
+				server_info.erase(server_info.begin());
+				delete si;
 			}
 			f->putf(".\n");
 			//end mode 4
@@ -687,9 +688,9 @@ c_nntp_cache::~c_nntp_cache(){
 	if (quiet<2){printf("freeing cache: %lu parts, %i files..\n",totalnum,files.size());}//fflush(stdout);}
 
 	while (!server_info.empty()){
-		c_nntp_server_info *s=server_info.begin()->second;
+		si=server_info.begin()->second;
 		server_info.erase(server_info.begin());
-		delete s;
+		delete si;
 	}
 //	for(i = files.begin();i!=files.end();++i){
 		//delete (*i).second;
