@@ -686,6 +686,11 @@ c_nntp_cache::~c_nntp_cache(){
 
 	if (quiet<2){printf("freeing cache: %lu parts, %i files..\n",totalnum,files.size());}//fflush(stdout);}
 
+	while (!server_info.empty()){
+		c_nntp_server_info *s=server_info.begin()->second;
+		server_info.erase(server_info.begin());
+		delete s;
+	}
 //	for(i = files.begin();i!=files.end();++i){
 		//delete (*i).second;
 //		(*i).second->dec_rcount();
@@ -765,6 +770,7 @@ int c_mid_info::load(string path,bool merge,bool lock){
 }
 c_mid_info::~c_mid_info(){
 	save();
+	clear();
 }
 int c_mid_info::save(void){
 	if (!changed)

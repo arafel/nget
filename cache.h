@@ -292,19 +292,19 @@ class c_mid_info {
 //				if ((*i).second->changed)return;/arrrr
 				if (d==TIME_T_MAX1 && s->date_removed!=TIME_T_MAX1) return;//ours has been deleted but not what we merging
 				if (s->date_removed!=TIME_T_MAX1 && s->date_removed > d) return; //both are deleted, but ours has more recent time?
-				delete s;
 				states.erase(i);
+				delete s;
 			}
 			s=new c_message_state(mid,a,d);
 			states.insert(t_message_state_list::value_type(s->messageid.c_str(),s));
 		}
 		void clear(void){
 			if (!states.empty()){
-				t_message_state_list::iterator i=states.begin();
-				for (;i!=states.end();++i){
-					delete (*i).second;
+				while (!states.empty()){
+					c_message_state *s=states.begin()->second;
+					states.erase(states.begin());
+					delete s;
 				}
-				states.erase(states.begin(),states.end());
 				changed=1;
 			}
 		}
