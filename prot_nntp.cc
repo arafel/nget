@@ -6,7 +6,6 @@
 #include "sockstuff.h"
 #include "uudeview.h"
 #include "misc.h"
-#include <stdarg.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -18,16 +17,40 @@ extern time_t lasttime;
 extern string nghome;
 
 int c_prot_nntp::putline(int echo,const char * str,...){
+	va_list ap;
+	va_start(ap,str);
+	int i=doputline(echo,str,ap);
+	va_end(ap);
+	return i;
+}
+int c_prot_nntp::stdputline(int echo,const char * str,...){
+	va_list ap;
+	int i;
+	va_start(ap,str);
+	doputline(echo,str,ap);
+	va_end(ap);
+	i=getreply(echo);
+	if (i==450 || i==480) {
+		nntp_auth();
+		va_start(ap,str);
+		doputline(echo,str,ap);
+		va_end(ap);
+		i=getreply(echo);
+	}
+	return i;
+}
+int c_prot_nntp::doputline(int echo,const char * str,va_list ap){
 //	static char fpbuf[255];
 	char *fpbuf;
 	int i;
-	va_list ap;
+//	va_list ap;
 
-	va_start(ap,str);
+//	va_start(ap,str);
 	i=vasprintf(&fpbuf,str,ap);
-	va_end(ap);
+//	va_end(ap);
 	if (!(fpbuf=(char*)realloc(fpbuf,i+3))){
 		delete(fpbuf);
+		nntp_close();
 		throw new c_error(EX_T_ERROR,"nntp_putline:realloc(%p,%i) %s(%i)",fpbuf,i+3,strerror(errno),errno);
 	}
 	if (echo)
@@ -40,6 +63,7 @@ int c_prot_nntp::putline(int echo,const char * str,...){
 	if (((i=sock.write(fpbuf,i+2))<=0)){
 //		printf("nntp_putline:%i %s(%i)\n",i,strerror(errno),errno);
 		delete(fpbuf);
+		nntp_close(1);
 		throw new c_error(EX_T_ERROR,"nntp_putline:%i %s(%i)",i,strerror(errno),errno);
 	}
 	delete(fpbuf);
@@ -50,6 +74,7 @@ int c_prot_nntp::getline(int echo){
 	//int i=sock_gets(ch,cbuf,cbuf_size);
 	int i=sock.bgets();
 	if (i<=0){
+		nntp_close(1);
 		throw new c_error(EX_T_ERROR,"nntp_getline:%i %s(%i)",i,strerror(errno),errno);
 	}else {
 		cbuf=sock.rbufp;
@@ -58,14 +83,13 @@ int c_prot_nntp::getline(int echo){
 			printf("%s\n",cbuf);
 	}
 	return i;
-
 }
 
-int c_prot_nntp::stdgetreply(int echo){
-	int i=getreply(echo);
-	if (i/100!=2)
-		throw new c_error(EX_P_FATAL,"bad reply: %s",cbuf);
-	return i;
+int c_prot_nntp::chkreply(int reply){
+//	int i=getreply(echo);
+	if (reply/100!=2)
+		throw new c_error(EX_P_FATAL,"bad reply %i: %s",reply,cbuf);
+	return reply;
 }
 
 int c_prot_nntp::getreply(int echo){
@@ -101,10 +125,10 @@ void c_prot_nntp::doxover(int low, int high){
 		time(&starttime);
 		nntp_print_retrieving_headers(low,high,low,0);
 	}
-	putline(debug,"XOVER %i-%i",low,high);
+	chkreply(stdputline(debug,"XOVER %i-%i",low,high));
 	time(&starttime);
 	time(&curt);
-	stdgetreply(debug);
+	//stdgetreply(debug);
 	do {
 		bytes+=getline(debug);
 		if (cbuf[0]=='.')break;
@@ -148,8 +172,8 @@ void c_prot_nntp::nntp_dogroup(int getheaders){
 	}
 	nntp_doopen();
 	if (groupselected) return;
-	putline(1,"GROUP %s",group.c_str());
-	stdgetreply(1);
+	chkreply(stdputline(1,"GROUP %s",group.c_str()));
+//	stdgetreply(1);
 	groupselected=1;
 	char *p;
 	int num,low,high;
@@ -203,15 +227,17 @@ inline void arinfo::print_retrieving_articles(time_t curtime, arinfo*tot){
 //}
 
 
-void c_prot_nntp::nntp_doarticle(arinfo*ari,arinfo*toti,char *fn){
+int c_prot_nntp::nntp_doarticle(arinfo*ari,arinfo*toti,char *fn){
 //	long bytes=0,lines=0;
 	int header=1;
 	time_t curt,lastt=0;
 	c_file_stream f;
 	nntp_doopen();
 	nntp_dogroup(0);
-	putline(debug,"ARTICLE %li",ari->anum);
-	stdgetreply(debug);
+	if (stdputline(debug,"ARTICLE %li",ari->anum)/100!=2){
+		printf("error retrieving article %li: %s\n",ari->anum,cbuf);
+		return -1;
+	}
 	list<char *> buf;
 	list<char *>::iterator curb;
 	char *p,*lp;
@@ -264,6 +290,7 @@ void c_prot_nntp::nntp_doarticle(arinfo*ari,arinfo*toti,char *fn){
 		f.close();
 	}else
 		throw new c_error(EX_A_FATAL,"unable to open %s: %s",fn,strerror(errno));
+	return 0;
 }
 
 void uu_msg_callback(void *v,char *m,int t){
@@ -326,9 +353,14 @@ void c_prot_nntp::nntp_retrieve(int doit){
 //			bp=f->parts.begin()->second;
 			list<char *> fnbuf;
 			list<char *>::iterator fncurb;
+			int derr=0;
 			for(curp = f->parts.begin();curp!=f->parts.end();++curp){
 				//asprintf(&fn,"%s/%s-%s-%li-%li-%li",nghome.c_str(),host.c_str(),group.c_str(),fgnum,part,num);
 				p=(*curp).second;
+				if (derr){
+					qtotinfo.bytestot-=p->size;
+					continue;
+				}
 				asprintf(&fn,"./%s-%s-%li-%03li-%li",host.c_str(),group.c_str(),f->banum,(*curp).first,p->anum);
 				if (!fexists(fn)){
 					ainfo.anum=p->anum;
@@ -336,60 +368,68 @@ void c_prot_nntp::nntp_retrieve(int doit){
 					ainfo.bytesdone=0;
 					ainfo.linestot=p->lines;
 					ainfo.bytestot=p->size;
-					nntp_doarticle(&ainfo,&qtotinfo,fn);
+					if (nntp_doarticle(&ainfo,&qtotinfo,fn)){
+						delete fn;
+						qtotinfo.bytestot-=p->size;
+						derr=-1;//######skip this file..
+						continue;
+					}
 				}else
 					qtotinfo.bytestot-=p->size;
 //				UULoadFile(fn,NULL,0);//load once they are all d/l'd
 				//				delete fn;
 				fnbuf.push_back(fn);
 			}
-			if ((r=UUInitialize())!=UURET_OK)
-				throw new c_error(EX_A_FATAL,"UUInitialize: %s",UUstrerror(r));
-			UUSetOption(UUOPT_DUMBNESS,1,NULL);//we already put the parts in the correct order, so it doesn't need to.
-			//UUSetOption(UUOPT_FAST,1,NULL);//we store each message in a seperate file
-			//actually, I guess that won't work, since some messages have multiple files in them anyway.
-			UUSetOption(UUOPT_OVERWRITE,0,NULL);//no thanks.
-			UUSetOption(UUOPT_USETEXT,1,NULL);//######hmmm...
-			UUSetMsgCallback(NULL,uu_msg_callback);
-			UUSetBusyCallback(NULL,uu_busy_callback,1000);
-			for(fncurb = fnbuf.begin();fncurb!=fnbuf.end();++fncurb){
-				UULoadFile((*fncurb),NULL,0);
-			}
-			uulist * uul;
-			int derr=0;
-			for (int un=0;;un++){
-				if ((uul=UUGetFileListItem(un))==NULL)break;
-				if (!(uul->state & UUFILE_OK)){
-					printf("%s not ok\n",uul->filename);
-					derr++;
-					continue;
+			if (!derr){
+				if ((r=UUInitialize())!=UURET_OK)
+					throw new c_error(EX_A_FATAL,"UUInitialize: %s",UUstrerror(r));
+				UUSetOption(UUOPT_DUMBNESS,1,NULL);//we already put the parts in the correct order, so it doesn't need to.
+				//UUSetOption(UUOPT_FAST,1,NULL);//we store each message in a seperate file
+				//actually, I guess that won't work, since some messages have multiple files in them anyway.
+				UUSetOption(UUOPT_OVERWRITE,0,NULL);//no thanks.
+				UUSetOption(UUOPT_USETEXT,1,NULL);//######hmmm...
+				UUSetMsgCallback(NULL,uu_msg_callback);
+				UUSetBusyCallback(NULL,uu_busy_callback,1000);
+				for(fncurb = fnbuf.begin();fncurb!=fnbuf.end();++fncurb){
+					UULoadFile((*fncurb),NULL,0);
 				}
-//				printf("\ns:%x d:%x\n",uul->state,uul->uudet);
-				if (uul->uudet==PT_ENCODED && strcmp(uul->filename,"0001.txt")==0){
-					char *nfn;
-					asprintf(&nfn,"%i.txt",f->banum);//give it a (somewhat) more sensible name
-					UURenameFile(uul,nfn);
-					delete nfn;
-				}
-				r=UUDecodeFile(uul,NULL);
-				if (r==UURET_EXISTS){
-					char *nfn;
-					asprintf(&nfn,"%s.%i.%i",uul->filename,f->banum,rand());
-					UURenameFile(uul,nfn);
-					delete nfn;
+				uulist * uul;
+				for (int un=0;;un++){
+					if ((uul=UUGetFileListItem(un))==NULL)break;
+					if (!(uul->state & UUFILE_OK)){
+						printf("%s not ok\n",uul->filename);
+						derr++;
+						continue;
+					}
+					//				printf("\ns:%x d:%x\n",uul->state,uul->uudet);
+					if (uul->uudet==PT_ENCODED && strcmp(uul->filename,"0001.txt")==0){
+						char *nfn;
+						asprintf(&nfn,"%i.txt",f->banum);//give it a (somewhat) more sensible name
+						UURenameFile(uul,nfn);
+						delete nfn;
+					}
 					r=UUDecodeFile(uul,NULL);
+					if (r==UURET_EXISTS){
+						char *nfn;
+						asprintf(&nfn,"%s.%i.%i",uul->filename,f->banum,rand());
+						UURenameFile(uul,nfn);
+						delete nfn;
+						r=UUDecodeFile(uul,NULL);
+					}
+					if (r!=UURET_OK){
+						derr++;
+						printf("decode(%s): %s\n",uul->filename,UUstrerror(r));
+						continue;
+					}
 				}
-				if (r!=UURET_OK){
-					derr++;
-					printf("decode(%s): %s\n",uul->filename,UUstrerror(r));
-					continue;
-				}
+				UUCleanUp();
 			}
-			UUCleanUp();
-			if (derr)
+			if (derr>0)
 				printf(" %i decoding errors occured, keeping temp files.\n",derr);
-			else
+			else if (derr==0)
 				printf("decoded ok, deleting temp files.\n");
+			else if (derr<0 && fnbuf.size())
+				printf("download error occured, keeping temp files.\n");
 			char *p;
 			for(fncurb = fnbuf.begin();fncurb!=fnbuf.end();++fncurb){
 				p=(*fncurb);
@@ -401,15 +441,43 @@ void c_prot_nntp::nntp_retrieve(int doit){
 	}
 	delete filec;filec=NULL;
 }
+void c_prot_nntp::nntp_auth(void){
+	nntp_doauth(user,pass);
+}
+void c_prot_nntp::nntp_doauth(const char *user, const char *pass){
+	int i;
+	
+	if(!user){
+		nntp_close();
+		throw new c_error(EX_U_FATAL,"nntp_doauth: no authorization info known");
+	}
+	putline(1,"AUTHINFO USER %s",user);
+	i=getreply(1);
+	if (i==350 || i==381){ 
+		if(!pass){
+			nntp_close();
+			throw new c_error(EX_U_FATAL,"nntp_doauth: no password known");
+		}
+		putline(1,"AUTHINFO PASS %s",pass);
+		i=getreply(1);
+	}
+	chkreply(i);
+	authed=1;
+}
 
-void c_prot_nntp::nntp_open(const char *h){
+void c_prot_nntp::nntp_open(const char *h,const char *u,const char *p){
 	nntp_close();
 	host=h;
+	user=u;
+	pass=p;
 }
 
 void c_prot_nntp::nntp_doopen(void){
 	//if (ch<0){
 	if (!sock.isopen()){
+		if(host.size()<=0){
+			throw new c_error(EX_U_FATAL,"nntp_doopen: no host selected");
+		}
 		time(&lasttime);
 		int i;
 	//	if((ch=make_connection("nntp",SOCK_STREAM,host.c_str(),NULL,cbuf,cbuf_size))<0){
@@ -417,18 +485,24 @@ void c_prot_nntp::nntp_doopen(void){
 			//throw -1;
 			throw new c_error(EX_T_FATAL,"make_connection:%i %s(%i)",i,strerror(errno),errno);
 		}
-		stdgetreply(1);
+		chkreply(getreply(1));
 		putline(debug,"MODE READER");
 		getline(debug);
 		groupselected=0;
+		authed=0;
 	}
 }
 
-void c_prot_nntp::nntp_close(void){
+void c_prot_nntp::nntp_close(int fast){
 //	if(ch>=0){
 //		close(ch);ch=-1;
 //	}
-	sock.close();
+	if (sock.isopen()){
+		if (!fast)
+			putline(1,"QUIT");
+			//putline(debug,"QUIT");
+		sock.close();
+	}
 }
 
 void c_prot_nntp::cleanupcache(void){
@@ -437,10 +511,11 @@ void c_prot_nntp::cleanupcache(void){
 }
 void c_prot_nntp::cleanup(void){
 //	if (ch>=0){
-	if (sock.isopen()){
-		putline(debug,"QUIT");
-		nntp_close();
-	}
+	nntp_close();
+//	if (sock.isopen()){
+//		putline(debug,"QUIT");
+//		nntp_close();
+//	}
 //	if (cbuf){delete cbuf;cbuf=NULL;}
 	cleanupcache();
 }
@@ -452,6 +527,7 @@ c_prot_nntp::c_prot_nntp(void){
 //	ch=-1;
 	sock.initrbuf(4096);
 	filec=NULL;
+	authed=0;
 }
 c_prot_nntp::~c_prot_nntp(void){
 //	printf("nntp destructing\n");

@@ -7,6 +7,7 @@
 #include "cache.h"
 #include <string>
 #include "file.h"
+#include <stdarg.h>
 
 struct arinfo {
 	long Bps;
@@ -23,19 +24,24 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 //		int ch;
 		char *cbuf;
 //		int cbuf_size;
+		int authed;
 		c_file_tcp sock;
 		string host;
+		const char *user,*pass;
 		string group;
 		int groupselected;
 		c_cache *gcache;
 		c_nntp_file_cache_u *filec;
 		time_t starttime;
 
+		int stdputline(int echo,const char * str,...);
 		int putline(int echo, const char * str,...)
 	        __attribute__ ((format (printf, 3, 4)));
+		int doputline(int echo,const char * str,va_list ap);
 		int getline(int echo);
 		int getreply(int echo);
-		int stdgetreply(int echo);
+//		int stdgetreply(int echo);
+		int chkreply(int reply);
 		void doxover(int low, int high);
 		void nntp_queueretrieve(const char *match, int linelimit, int getflags);
 		void nntp_retrieve(int doit);
@@ -45,10 +51,12 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 		void nntp_group(const char *group, int getheaders);
 		void nntp_dogroup(int getheaders);
 		//void nntp_doarticle(long num,long ltotal,long btotal,char *fn);
-		void nntp_doarticle(arinfo*ari,arinfo*toti,char *fn);
-		void nntp_open(const char *h);
+		int nntp_doarticle(arinfo*ari,arinfo*toti,char *fn);
+		void nntp_auth(void);
+		void nntp_doauth(const char *user, const char *pass);
+		void nntp_open(const char *h,const char *u,const char *p);
 		void nntp_doopen(void);
-		void nntp_close(void);
+		void nntp_close(int fast=0);
 		void cleanupcache(void);
 		void cleanup(void);
 		c_prot_nntp();

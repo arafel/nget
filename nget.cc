@@ -75,13 +75,13 @@ void addoption(char *longo,int needarg,char shorto,char *adesc,char *desc){
 	ohelp[cur].namelen=longo?strlen(longo):0;
 	ohelp[cur].arg=adesc;
 	ohelp[cur].desc=desc;
-	int l=(adesc?strlen(adesc):0)+ohelp[cur].namelen+3;
+	int l=(adesc?strlen(adesc):0)+ohelp[cur].namelen+2;
 	if (l>olongestlen)
 		olongestlen=l;
 	cur++;
 }
 void print_help(void){
-      printf("nget v0.4 - nntp command line fetcher\n");
+      printf("nget v0.5 - nntp command line fetcher\n");
       printf("Copyright 1999 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -129,9 +129,10 @@ int main(int argc,char ** argv){
 	char * group=NULL;
 //	atexit(cache_dbginfo);
 	init_my_timezone();
-	nntp.nntp_open(getenv("NNTPSERVER")?:"localhost");
+	nntp.nntp_open(getenv("NNTPSERVER")?:"",NULL,NULL);
+//	nntp.nntp_open(getenv("NNTPSERVER")?:"localhost",NULL,NULL);
 	addoption("quiet",0,'q',0,"supress extra info");
-	addoption("host",1,'h',"HOSTNAME","nntp host (default $NNTPSERVER)");
+	addoption("host",1,'h',"\"HOST [user pass]\"","nntp host (default $NNTPSERVER) [optional authinfo]");
 	addoption("group",1,'g',"GROUPNAME","newsgroup");
 	addoption("quickgroup",1,'G',"GROUPNAME","use group without checking for new headers");
 	addoption("retrieve",1,'r',"REGEX","retrieve files matching regex");
@@ -252,10 +253,17 @@ int main(int argc,char ** argv){
 								group=optarg;
 								nntp.nntp_group(optarg,0);
 								break;
-							case 'h':
-								badskip=0;
-								nntp.nntp_open(optarg);
-								break;
+							case 'h':{
+										 char *u=optarg,*p=NULL;
+										 goodstrtok(&u,' ');
+										 if (u){
+											 p=u;
+											 goodstrtok(&p,' ');
+										 }
+										 badskip=0;
+										 nntp.nntp_open(optarg,u,p);
+									 }
+									 break;
 							case -12345:
 //								if (!badskip){
 //									nntp.nntp_retrieve(!testmode);

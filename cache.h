@@ -11,6 +11,7 @@
 #ifdef HAVE_CONFIG_H 
 #include "config.h"
 #endif
+#include <time.h>
 class c_nntp_cache_item {
 	public:
 		long num;

@@ -1,4 +1,4 @@
-nget 0.4  Copyright 1999 Matt Mueller <donut@azstarnet.com>
+nget 0.5  Copyright 1999 Matt Mueller <donut@azstarnet.com>
 
 Install:
 0) if you have uulib as a shared lib: ./configure and skip to step 2
@@ -6,18 +6,18 @@ Install:
 1.1) unpack it and run its ./configure && make
 1.2) ./configure --with-uulib=/dir/that/has/uulib
 1.2a) depending upon your compiler you may need to do something like:
-  CXXFLAGS="-fhandle-exceptions -O2" ./configure ....
+  CXXFLAGS="-fhandle-exceptions -O2 -g" ./configure ....
 1.2b) if you get strange errors about redo(and other vars) possibly being used
-  uninitialized try compiling with a lower optimization (seen on a freebsd sys,
-  with gcc 2.7.2.1)
+  uninitialized try compiling with a lower optimization (seems to occur with 
+  gcc 2.7.*)
 2) make 
 3) make install
 
 nget is developed on linux (glibc2), and compiles without modifications on
-freebsd 2.2.8(did need the CXXFLAGS env to be set as outlined above though, if
-someone has an autoconf test for wether a flag is needed to enable exceptions,
-I'd appreciate it).  It should probably work on other systems with little or no
-modifications.
+linux libc5 and freebsd 2.2.8(did need the CXXFLAGS env to be set as outlined
+above though, if someone has an autoconf test for wether a flag is needed to
+enable exceptions, I'd appreciate it).  It should probably work on other
+systems with little or no modifications.
 
 Copying:
 This program is free software; you can redistribute it and/or modify

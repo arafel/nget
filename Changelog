@@ -1,3 +1,14 @@
+nget (0.5) unstable; urgency=low
+
+  * a bit of fixes to the error recovery stuff.
+  * handles local files with regex special chars (somewhat) better
+  * nntp authinfo user/pass authorization supported
+  * trying to retrieve a no longer available article will merely skip to the
+    next file, rather than aborting.
+  * now compiles on linux libc5
+
+ -- Matt Mueller <donut@azstarnet.com>  Wed, 16 Jun 1999 04:41:59 -0700
+
 nget (0.4) unstable; urgency=low
 
   * included aclocal.m4 in the tar.gz

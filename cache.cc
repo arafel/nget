@@ -1,9 +1,9 @@
 #ifdef HAVE_CONFIG_H 
 #include "config.h"
 #endif
+#include "myregex.h"
 #include "cache.h"
 #include "misc.h"
-#include "myregex.h"
 #include "log.h"
 #include <glob.h>
 #ifdef HAVE_SLIST_H
@@ -538,7 +538,7 @@ void buildflist(filematchlist **l,longlist **a){
 //	c_regex *s;
 	file_match *fm;
 	c_regex amatch("^[0-9]+\\.txt",REG_EXTENDED|REG_ICASE|REG_NOSUB);
-	char buf[1024];
+	char buf[1024],*cp;
 	for (int i=0;i<globbuf.gl_pathc;i++){
 /*		asprintf(&s,"*[!"ALNUM"]%s[!"ALNUM"]*",globbuf.gl_pathv[i]);
 		(*l)->push_front(s);
@@ -548,6 +548,9 @@ void buildflist(filematchlist **l,longlist **a){
 		//no point in using fnmatch.. need to do this gross multi string per file kludge, and...
 		//sprintf(buf,"(^|[^[:alnum:]]+)%s([^[:alnum:]]+|$)",globbuf.gl_pathv[i]);//this is about the same speed as the 3 fnmatchs
 		sprintf(buf,"\\<%s\\>",globbuf.gl_pathv[i]);//this is much faster
+		cp=buf;
+		while ((cp=strpbrk(cp,"()<>|[]")))
+			*cp='.';//filter out some special chars.. really should just escape them, but thats a bit harder
 //		s=new c_regex(buf,REG_EXTENDED|REG_ICASE|REG_NOSUB);
 		fm=new file_match(buf,REG_EXTENDED|REG_ICASE|REG_NOSUB);
 		if(stat(globbuf.gl_pathv[i],&stbuf)==0)
