@@ -195,7 +195,7 @@ int do_utime(const char *f,time_t t){
 
 
 
-size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%m-%d-%y %H:%M", int local=1) {
+size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr, int local) {
 //	static char timestr[80];
 	struct tm *time_now;
 	if (local)

@@ -63,7 +63,8 @@ const char * getfname(const char * src);
 
 int do_utime(const char *f,time_t t);
 
-size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%m-%d-%y %H:%M", int local=1);
+// formatstr="%m-%d-%y %H:%M"
+size_t tconv(char * timestr, int max, time_t *curtime,const char * formatstr="%Y%m%dT%H%M%S", int local=1);
 
 //goodstrtok:
 //*cur should be set to string to tokenize on first call.
