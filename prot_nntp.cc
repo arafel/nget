@@ -638,7 +638,14 @@ char * uu_fname_filter(void *v,char *fn){
 		throw new c_error(EX_U_WARN,"nntp_retrieve: no match for %s",match);
 }*/
 
-void c_prot_nntp::nntp_retrieve(int doit,int options, const string &writelite){
+void print_nntp_file_info(c_nntp_file::ptr f) {
+	char tconvbuf[TCONV_DEF_BUF_LEN];
+	c_nntp_part *p=(*f->parts.begin()).second;
+	tconv(tconvbuf,TCONV_DEF_BUF_LEN,&p->date);
+	printf("%i/%i\t%lil\t%s\t%s\t%s\t%s\n",f->have,f->req,f->lines(),tconvbuf,f->subject.c_str(),f->author.c_str(),p->messageid.c_str());
+}
+
+void c_prot_nntp::nntp_retrieve(int options, const string &writelite){
 	if (!(filec) || filec->files.empty())
 		return;
 
@@ -653,20 +660,38 @@ void c_prot_nntp::nntp_retrieve(int doit,int options, const string &writelite){
 		gcache=NULL;
 //	}
 
-	if (!doit){
-		char tconvbuf[TCONV_DEF_BUF_LEN];
-		c_nntp_part *p;
+	if (options & GETFILES_UNMARK) {
+		ulong nbytes=0;
+		uint nfiles=0;
 		for(curf = filec->files.begin();curf!=filec->files.end();++curf){
 			fr=(*curf).second;
 			f=fr->file;
-			p=(*f->parts.begin()).second;
-			tconv(tconvbuf,TCONV_DEF_BUF_LEN,&p->date);
-			printf("%i/%i\t%lil\t%s\t%s\t%s\t%s\n",f->have,f->req,f->lines(),tconvbuf,f->subject.c_str(),f->author.c_str(),p->messageid.c_str());
+			if (options & GETFILES_TESTMODE) {
+				if (midinfo->check(f->bamid())){
+					print_nntp_file_info(f);
+					nbytes+=f->bytes();
+					nfiles++;
+				}
+			} else
+				midinfo->remove(f->bamid());
 		}
+		if (options & GETFILES_TESTMODE)
+			printf("Would unmark %lu bytes in %u files\n",nbytes,nfiles);
+	} else if (options & GETFILES_TESTMODE){
+		for(curf = filec->files.begin();curf!=filec->files.end();++curf){
+			fr=(*curf).second;
+			print_nntp_file_info(fr->file);
+		}
+		if (options & GETFILES_MARK)
+			printf("Would mark ");
 		printf("%lu bytes in %u files\n",filec->bytes,filec->files.size());
-	}
-
-	if (doit){
+	} else if (options & GETFILES_MARK) {
+		for(curf = filec->files.begin();curf!=filec->files.end();++curf){
+			fr=(*curf).second;
+			f=fr->file;
+			midinfo->insert(f->bamid());
+		}
+	} else {
 		t_id group_id;
 # ifdef CHECKSUM
 		group_id=CHECKSUM(0L, Z_NULL, 0);

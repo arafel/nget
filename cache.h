@@ -283,6 +283,14 @@ class c_mid_info {
 			s=new c_message_state(mid,a,d);
 			states.insert(t_message_state_list::value_type(s->messageid.c_str(),s));
 		}
+		int remove(string mid){
+			t_message_state_list::iterator i=states.find(mid.c_str());
+			if (i==states.end())
+				return 0;
+			(*i).second->date_removed=TIME_T_DEAD;
+			changed=1;
+			return 1;
+		}
 		void clear(void){
 			if (!states.empty()){
 				while (!states.empty()){

@@ -34,6 +34,9 @@
 #define GETFILES_KEEPTEMP		16
 #define GETFILES_TEMPSHORTNAMES 32
 #define GETFILES_NOCONNECT		64
+#define GETFILES_TESTMODE		512
+#define GETFILES_MARK			1024
+#define GETFILES_UNMARK			2048
 
 struct quinfo {
 	long bytesleft;
@@ -83,7 +86,7 @@ class c_prot_nntp /*: public c_transfer_protocol */{
 		void doxover(ulong low, ulong high);
 		void doxover(c_nrange *r);
 //		void nntp_queueretrieve(const char *match, ulong linelimit, int getflags);
-		void nntp_retrieve(int doit,int options, const string &writelite);
+		void nntp_retrieve(int options, const string &writelite);
 		void nntp_print_retrieving_headers(ulong lll,ulong hhh,ulong ccc,ulong bbb);
 //		void nntp_print_retrieving_articles(long nnn, long tot,long done,long btot,long bbb);
 //		void nntp_print_retrieving_articles(arinfo *ari, arinfo*tot);

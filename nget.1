@@ -46,6 +46,10 @@ when trying to change to a dir that does not exist.  Currently this option only 
 mkdir.  A future version of nget will support multi-level creating, like mkdir -p.
 .IP "-T/--testmode"
 Causes --retrieve to merely print out all matching files.
+.IP "-M/--mark"
+Mark matched files as retrieved.
+.IP "-U/--unmark"
+Unmark matched files as retrieved.  (Automatically sets -dI)
 .IP "-t/--tries int"
 Set maximum number of retries.  -1 will retry indefinatly (probably not a good
 idea).

@@ -76,7 +76,7 @@ void print_error_status(void){
 
 time_t lasttime;
 
-#define NUM_OPTIONS 29
+#define NUM_OPTIONS 31
 #ifndef HAVE_LIBPOPT
 
 #ifndef HAVE_GETOPT_LONG
@@ -158,6 +158,8 @@ static void addoptions(void)
 	addoption("nocase",0,'C',0,"match incasesensitively(default)");
 	addoption("dupecheck",1,'d',"FLAGS","check to make sure you haven't already downloaded files(default -dfiM)");
 	addoption("nodupecheck",0,'D',0,"don't check if you already have files(shortcut for -dFIM)");
+	addoption("mark",0,'M',0,"mark matching articles as retrieved");
+	addoption("unmark",0,'U',0,"mark matching articles as not retrieved (implies -dI)");
 	addoption("tempshortnames",0,'S',0,"use 8.3 names for tempfiles");
 	addoption("templongnames",0,'L',0,"use long names for tempfiles");
 	addoption("temppath",1,'P',"DIRECTORY","path to store tempfiles");
@@ -255,7 +257,7 @@ c_nget_config nconfig;
 struct nget_options {
 	int maxretry,retrydelay;
 	ulong linelimit;
-	int gflags,testmode,badskip,qstatus;
+	int gflags,badskip,qstatus;
 	char makedirs;
 	c_group_info::ptr group;//,*host;
 //	c_data_section *host;
@@ -273,7 +275,7 @@ struct nget_options {
 		get_path();
 		get_temppath();
 	}
-	nget_options(nget_options &o):maxretry(o.maxretry),retrydelay(o.retrydelay),linelimit(o.linelimit),gflags(o.gflags),testmode(o.testmode),badskip(o.badskip),qstatus(o.qstatus),makedirs(o.makedirs),group(o.group),host(o.host)/*,user(o.user),pass(o.pass)*/,path(o.path),startpath(o.path),temppath(o.temppath),writelite(o.writelite){
+	nget_options(nget_options &o):maxretry(o.maxretry),retrydelay(o.retrydelay),linelimit(o.linelimit),gflags(o.gflags),badskip(o.badskip),qstatus(o.qstatus),makedirs(o.makedirs),group(o.group),host(o.host)/*,user(o.user),pass(o.pass)*/,path(o.path),startpath(o.path),temppath(o.temppath),writelite(o.writelite){
 /*		if (o.path){
 			path=new char[strlen(o.path)+1];
 			strcpy(path,o.path);
@@ -425,8 +427,17 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 				//						nntp.nntp_queueretrieve(loptarg,linelimit,0,gflags);
 				//						break;
 				case 'T':
-					options.testmode=1;
-					PDEBUG(DEBUG_MIN,"testmode now %i",options.testmode);
+					options.gflags|=GETFILES_TESTMODE;
+					PDEBUG(DEBUG_MIN,"testmode now %i",options.gflags&GETFILES_TESTMODE > 0);
+					break;
+				case 'M':
+					options.gflags|= GETFILES_MARK;
+					options.gflags&= ~GETFILES_UNMARK;
+					break;
+				case 'U':
+					options.gflags|= GETFILES_UNMARK;
+					options.gflags&= ~GETFILES_MARK;
+					options.parse_dupe_flags("I");
 					break;
 				//case 1:
 				case 'R':
@@ -602,7 +613,7 @@ static int do_args(int argc, char **argv,nget_options options,int sub){
 					return 1;
 				default:
 					if (options.qstatus){
-						if (!options.badskip) nntp.nntp_retrieve(!options.testmode,options.gflags,options.writelite);
+						if (!options.badskip) nntp.nntp_retrieve(options.gflags,options.writelite);
 						options.qstatus=0;
 					}
 					switch (c){
@@ -801,7 +812,6 @@ int main(int argc, char ** argv){
 			options.badskip=0;
 			options.linelimit=3;
 			options.gflags=0;
-			options.testmode=0;
 			options.qstatus=0;
 			options.group=NULL;
 			options.host=NULL;

@@ -11,6 +11,7 @@ nget (0.??) unstable; urgency=low
   * Fixed some leaks. (mostly unnoticable unless you did lots of -[Gg] on the same instance.)
   * Fixed ngetlite building on platforms without vasprintf. (reported by Michael J. Paluka)
   * Added -d [mM] flags. (Andres Heinloo)
+  * Added -[MU] options. (Andres Heinloo, me)
 
  -- ??
 
