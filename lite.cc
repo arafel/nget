@@ -120,6 +120,7 @@ void dofile(const char *arg){
 					if (n<EX_FATALS){
 //						nntp.doclose();
 						retry++;
+						printf(" (retrying %i)\n",retry);
 						sleep(1);
 						continue;
 					}else{
@@ -127,6 +128,7 @@ void dofile(const char *arg){
 							printf(" (fatal application error, exiting..)\n");
 							exit(-1);
 						}else{
+							printf(" (skipping)\n");
 							break;
 						}
 					}

@@ -115,6 +115,9 @@ if test "$usez" != "no"; then
 		fi
 	fi
 fi
+if test "$ac_cv_header_popt_h" = "yes" ; then
+	MY_CHECK_POPT_CONST
+fi
 
 dnl check for uulib
 if test -d uulib; then 

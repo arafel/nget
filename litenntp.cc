@@ -105,6 +105,7 @@ int c_prot_nntp::getreply(int echo){
 
 void c_prot_nntp::doarticle(ulong anum,ulong bytes,ulong lines,const char *outfile){
 	chkreply(stdputline(debug>=DEBUG_MED,"ARTICLE %li",anum));
+	printf(".");fflush(stdout);
 	ulong rbytes=0,rlines=0,hlines=0;
 	time_t starttime,donetime;
 	time(&starttime);
@@ -143,6 +144,7 @@ void c_prot_nntp::doarticle(ulong anum,ulong bytes,ulong lines,const char *outfi
 		long d=donetime-starttime;
 		printf("got article %lu in %li sec, %li B/s (%lu/%lu lines, %lu/%lu bytes, %s)",anum,d,d?rbytes/(d):0,rlines,lines,rbytes,bytes,outfile);
 		if (rlines!=lines)printf(" Warning! lines not equal to expected!");
+		if (rbytes!=bytes)printf(" bne!");
 		printf("\n");
 		fflush(stdout);
 	}
@@ -162,7 +164,7 @@ void c_prot_nntp::doclose(void){
 	safefree(curpass);
 }
 void c_prot_nntp::doopen(const char *host){
-	if (cursock.isopen() && strcmp(host,curhost)==0)
+	if (cursock.isopen() && curhost && strcmp(host,curhost)==0)
 		return;
 
 	doclose();

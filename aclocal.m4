@@ -17,6 +17,16 @@ if test $ac_cv_type_$1 = no; then
 fi
 ])
 
+AC_DEFUN(MY_CHECK_POPT_CONST,
+[AC_CACHE_CHECK([if popt wants const argvs],
+  ac_cv_popt_const_argv,
+[AC_TRY_COMPILE([#include <popt.h>], [const char ** targv=NULL;poptContext c=poptGetContext(NULL,1,targv,NULL,0);],
+  ac_cv_popt_const_argv=yes, ac_cv_popt_const_argv=no)])
+if test $ac_cv_popt_const_argv = yes; then
+  AC_DEFINE(POPT_CONST_ARGV)
+fi
+])
+
 AC_DEFUN(MY_DECL__TIMEZONE,
 [AC_CACHE_CHECK([for _timezone declaration in time.h],
   ac_cv_decl__timezone,

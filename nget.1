@@ -1,4 +1,4 @@
-.TH nget 1 "18 Apr 2000"
+.TH nget 1 "9 Aug 2000"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -21,6 +21,8 @@ retrieve headers for all hosts above _glevel (see configuration section for
 more info on priorities.)
 .IP "-G/--quickgroup group"
 Like --group, but does not retrieve new headers.
+.IP "-F/--flushserver host"
+Flush all headers for server from current group.
 .IP "-r/--retrieve regex"
 Matches regex against subjects of previously selected group, and retrieves ones
 that match.
@@ -228,6 +230,11 @@ equivilant to above, using -R:
 nget -g alt.binaries.pictures.linux -R "lines 50 > subject penguin.*png == &&"
 .br
 (basically (lines > 50) && (subject == penguin.*png))
+.P
+flush all headers from host goodhost in group alt.binaries.pictures.linux:
+.br
+.B
+nget -Galt.binaries.pictures.linux -Fgoodhost
 .SH NOTES
 Running multiple copies of nget at once should be safe.  It uses file locking,
 so there should be no way for the files to actually get corrupted.
@@ -242,11 +249,6 @@ directory at the same time..)
 Where to put .nget3 directory. (put nget files $HOME/.nget3/)
 .IP "NGETHOME"
 Override HOME var (put nget files in $NGETHOME)
-.IP "NNTPSERVER"
-Default host to use for -g command.  (Hold over from previous versions, since I haven't gotten
-the host priority stuff complete for -g operation.)  -r and other commands will
-use the server priority settings to select which server to try first.  -g will
-support this in the next version of nget.
 .SH FILES
 .PP
 .IP "~/.nget3/"

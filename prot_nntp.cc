@@ -512,7 +512,7 @@ int c_prot_nntp::nntp_doarticle(c_nntp_part *part,arinfo*ari,quinfo*toti,char *f
 		ari->print_retrieving_articles(curt,toti);
 		printf("\n");
 	}
-	if ((ari->bytesdone > ari->bytestot+2 || ari->bytesdone+2 < ari->bytestot) || ari->linesdone!=ari->linestot){//some servers report # of bytes a bit off of what we expect.
+	if ((ari->bytesdone > ari->bytestot+3 || ari->bytesdone+3 < ari->bytestot) || ari->linesdone!=ari->linestot){//some servers report # of bytes a bit off of what we expect.
 		printf("doarticle %lu: %lu!=%lu || %lu!=%lu\n",ari->anum,ari->bytesdone,ari->bytestot,ari->linesdone,ari->linestot);
 	}
 #ifdef FILE_DEBUG

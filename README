@@ -1,4 +1,4 @@
-nget 0.10  Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>
+nget 0.11  Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>
 
 Install:
 -1) it is recommending you install libpopt if you don't have it already.  Since

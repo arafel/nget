@@ -47,7 +47,7 @@ extern "C" {
 
 time_t lasttime;
 
-#define NUM_OPTIONS 27
+#define NUM_OPTIONS 28
 #ifndef HAVE_LIBPOPT
 
 #ifndef HAVE_GETOPT_LONG
@@ -109,6 +109,7 @@ static void addoptions(void)
 	addoption("host",1,'h',"HOSTALIAS","nntp host to use (must be configured in .ngetrc)");
 	addoption("group",1,'g',"GROUPNAME","newsgroup");
 	addoption("quickgroup",1,'G',"GROUPNAME","use group without checking for new headers");
+	addoption("flushserver",1,'F',"HOSTALIAS","flush all headers for server from current group");
 	addoption("expretrieve",1,'R',"EXPRESSION","retrieve files matching expression(see man page)");
 	addoption("retrieve",1,'r',"REGEX","retrieve files matching regex");
 	addoption("list",1,'@',"LISTFILE","read commands from listfile");
@@ -136,7 +137,7 @@ static void addoptions(void)
 	addoption(NULL,0,0,NULL,NULL);
 };
 static void print_help(void){
-      printf("nget v0.10 - nntp command line fetcher\n");
+      printf("nget v0.11 - nntp command line fetcher\n");
       printf("Copyright 1999-2000 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -274,7 +275,7 @@ struct s_arglist {
 	int argc;
 	char **argv;
 };
-static int do_args(int argc,char **argv,nget_options options,int sub){
+static int do_args(int argc, char **argv,nget_options options,int sub){
 	int c=0;
 #ifdef HAVE_LIBPOPT
 	poptContext optCon;
@@ -282,17 +283,18 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 	int opt_idx;
 #endif
 	int redo=0,redone=0;
-	char * loptarg=NULL;
+	const char * loptarg=NULL;
 	//printf("limit:%i tries:%i case:%i complete:%i dupcheck:%i\n",linelimit,maxretry,gflags&GETFILES_CASESENSITIVE,!(gflags&GETFILES_GETINCOMPLETE),!(gflags&GETFILES_NODUPECHECK));
 
 #ifdef HAVE_LIBPOPT
-	optCon = poptGetContext(NULL, argc, argv, optionsTable, sub?POPT_CONTEXT_KEEP_FIRST:0);
+	optCon = poptGetContext(NULL, argc, POPT_ARGV_T argv, optionsTable, sub?POPT_CONTEXT_KEEP_FIRST:0);
 #endif
 	while (1){
 		if (redo){
 			redo=0;
 		}else {
-			if ((c=
+//			if ((
+			c=
 #ifdef HAVE_LIBPOPT
 						poptGetNextOpt(optCon)
 #else //HAVE_LIBPOPT
@@ -302,8 +304,9 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 						getopt(argc,argv,OPTIONS)
 #endif
 #endif //!HAVE_LIBPOPT
-				)<0)
-				c=-12345;
+						;
+//				)==-1)
+//				c=-12345;
 #ifdef HAVE_LIBPOPT
 			loptarg=poptGetOptArg(optCon);
 #else
@@ -458,6 +461,26 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 						}
 					}
 					break;
+				case 'F':
+					{
+						c_server* server=nconfig.getserver(loptarg);
+						if (!server)printf("no such server %s\n",loptarg);
+						c_nntp_server_info* servinfo=nntp.gcache->getserverinfo(server->serverid);
+
+						nntp.gcache->flushlow(servinfo,ULONG_MAX,nntp.midinfo);
+						servinfo->reset();
+						break;
+					}
+#ifdef HAVE_LIBPOPT
+#define POPT_ERR_CASE(a) case a: printf("%s: %s\n",#a,poptBadOption(optCon,0)); print_help(); return 1;
+				POPT_ERR_CASE(POPT_ERROR_NOARG);
+				POPT_ERR_CASE(POPT_ERROR_BADOPT);
+				POPT_ERR_CASE(POPT_ERROR_OPTSTOODEEP);
+				POPT_ERR_CASE(POPT_ERROR_BADQUOTE);
+				POPT_ERR_CASE(POPT_ERROR_ERRNO);
+				POPT_ERR_CASE(POPT_ERROR_BADNUMBER);
+				POPT_ERR_CASE(POPT_ERROR_OVERFLOW);
+#endif
 				case ':':
 				case '?':
 					print_help();
@@ -481,7 +504,7 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 									s_arglist larg;
 									list<s_arglist> arglist;
 									while (f.bgets()>0){
-										if(!(pr=poptParseArgvString(f.rbufp(),&larg.argc,&larg.argv))){
+										if(!(pr=poptParseArgvString(f.rbufp(),&larg.argc,POPT_ARGV_p_T &larg.argv))){
 											arglist.push_back(larg);
 											totargc+=larg.argc;
 										}else printf("poptParseArgvString:%i\n",pr);
@@ -527,16 +550,7 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 							break;
 						case 'g':
 							if (options.badskip<2){
-/*								if (options.host==NULL){//######  KLUDGE since host prio stuff isn't finished. TODO: use prios.
-									printf("null host, trying %s\n",getenv("NNTPSERVER"));
-									if (getenv("NNTPSERVER")){
-										options.host=nconfig.getserver(getenv("NNTPSERVER"));
-										nntp.nntp_open(options.host);
-									}
-								}*/
 								options.group=nconfig.getgroup(loptarg);
-//								if (!galias || !(options.group=galias->getitema(loptarg)))
-//									options.group=loptarg;
 								nntp.nntp_group(options.group,1);
 								if (options.badskip)
 									options.badskip=0;
@@ -545,24 +559,12 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 						case 'G':
 							if (options.badskip<2){
 								options.group=nconfig.getgroup(loptarg);
-//								if (!galias || !(options.group=galias->getitema(loptarg)))
-//									options.group=loptarg;
 								nntp.nntp_group(options.group,0);
 								if (options.badskip)
 									options.badskip=0;
 							}
 							break;
 						case 'h':{
-									 /*options.user=loptarg,options.pass=NULL;
-									 goodstrtok(&options.user,' ');
-									 if (options.user){
-										 options.pass=options.user;
-										 goodstrtok(&options.pass,' ');
-									 }
-									 options.badskip=0;
-									 if (!halias || !(options.host=halias->getitema(loptarg)))
-										 options.host=loptarg;
-									 nntp.nntp_open(options.host,options.user,options.pass);*/
 									 if (*loptarg){
 										 options.host=nconfig.getserver(loptarg);
 										 if (options.host==NULL){
@@ -575,11 +577,10 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 										 options.host=NULL;
 										 options.badskip=0;
 									 }
-//									 options.host=halias->getsection(loptarg);
 									 nntp.nntp_open(options.host);
 								 }
 								 break;
-						case -12345:
+						case -1://end of args.
 								 //								if (!badskip){
 								 //									nntp.nntp_retrieve(!testmode);
 								 //								}
@@ -601,6 +602,8 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 						sleep(options.retrydelay);
 				}else{
 					printf("\n");
+					if (c==-1)
+						return 0;//end of args.
 					redo=0;redone=0;
 				}
 			}else{
@@ -630,7 +633,7 @@ static int do_args(int argc,char **argv,nget_options options,int sub){
 	poptFreeContext(optCon);
 #endif
 }
-int main(int argc,char ** argv){
+int main(int argc, char ** argv){
 	try {
 		//	atexit(cache_dbginfo);
 		//string hi="aoeu";

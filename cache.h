@@ -236,7 +236,8 @@ class c_nntp_server_info {
 	public:
 		ulong serverid;
 		ulong high,low,num;
-		c_nntp_server_info(ulong sid):serverid(sid),high(0),low(ULONG_MAX),num(0){}
+		void reset(void){high=0;low=ULONG_MAX;num=0;}
+		c_nntp_server_info(ulong sid):serverid(sid){reset();}
 		c_nntp_server_info(ulong sid,ulong hig,ulong lo,ulong nu):serverid(sid),high(hig),low(lo),num(nu){}
 };
 typedef map<ulong,c_nntp_server_info*,less<ulong> > t_nntp_server_info;

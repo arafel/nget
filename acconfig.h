@@ -28,6 +28,9 @@
 /* debug mode? */
 #undef NDEBUG
 
+/* Does popt want const argvs? */
+#undef POPT_CONST_ARGV
+
 @BOTTOM@
 
 /* tests for some features that depend on other features */

@@ -1,1 +1,0 @@
-nget.o prot_nntp.o sockstuff.o cache.o file.o misc.o myregex.o datfile.o nrange.o: config.h

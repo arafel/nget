@@ -1,12 +1,23 @@
+nget (0.11) unstable; urgency=low
+
+  * Fixed segfault on reconnecting after exception in ngetlite.
+  * Added -F command to flush headers from a group.
+  * Fixed const char ** compilation problem in nget.cc (Only showed up with
+    newer versions of popt)
+
+ -- Matt Mueller <donut@azstarnet.com>  Wed,  9 Aug 2000 06:33:25 -0700
+
 nget (0.10) unstable; urgency=low
 
-  * Added _level and _glevel group prio options, and made -g select hosts
+  * Fixed handling of invalid args when using libpopt.
+  * Added _level and _glevel prio options, and made -g select hosts
     automatically.
   * Fixed dual \ problem in regexes. (Now you only need dual \'s for quote
     chars, rather than all chars. (once for the shell, once for nget))
   * Fixed header retrieval for new groups with fullxover=1. (only failed on 
     some servers)
-  * Added better error handling when selecting invalid host.
+  * Better error handling when selecting invalid host.
+  * Better error handling for badly configured sections in .ngetrc.
   * Fixed nrange.cc compile problem in without-zlib build.
 
  -- Matt Mueller <donut@azstarnet.com>  Tue, 18 Apr 2000 15:55:53 -0700

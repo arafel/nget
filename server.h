@@ -34,8 +34,9 @@ class c_server {
 		string addr;
 		string user,pass;
 		bool fullxover;
-		c_server(string id, string alia, string add, string use,string pas,const char *fullxove):alias(alia),addr(add),user(use),pass(pas){
-			serverid=atoul(id.c_str());
+		c_server(ulong id, string alia, string add, string use,string pas,const char *fullxove):alias(alia),addr(add),user(use),pass(pas){
+//			serverid=atoul(id.c_str());
+			serverid=id;
 			if (fullxove)
 				fullxover=atoi(fullxove);
 			else
@@ -120,6 +121,10 @@ class c_nget_config {
 			if (name.empty())return NULL;
 			if (prio.empty())prio="default";
 			c_server_priority_grouping *priog=getpriogrouping(prio);
+			if (!priog){
+				printf("group %s(%s), prio %s not found\n",name.c_str(),alias.c_str(),prio.c_str());
+				return NULL;
+			}
 			assert(priog);
 			c_group_info::ptr group(new c_group_info(alias,name,priog));
 			if (!group.isnull()){
@@ -141,6 +146,7 @@ class c_nget_config {
 			c_data_section *ds;
 			c_data_item *di;
 			const char *sida;
+			ulong tul;
 			//halias
 			assert(hinfo);
 			for (dli=hinfo->data.begin();dli!=hinfo->data.end();++dli){
@@ -154,11 +160,20 @@ class c_nget_config {
 				if (!ds){
 					printf("h !ds\n");continue;
 				}
-				if (!(sida=ds->getitema("id"))){
-					printf("%s no id\n",ds->key.c_str());
+				if (!ds->getitema("addr")){
+					printf("host %s no addr\n",ds->key.c_str());
 					continue;
 				}
-				server=new c_server(sida,ds->key,ds->getitems("addr"),ds->getitems("user"),ds->getitems("pass"),ds->getitema("fullxover"));
+				if (!(sida=ds->getitema("id"))){
+					printf("host %s no id\n",ds->key.c_str());
+					continue;
+				}
+				tul=atoul(sida);
+				if (tul==0){
+					printf("host %s invalid id '%s'\n",ds->key.c_str(),sida);
+					continue;
+				}
+				server=new c_server(tul,ds->key,ds->getitems("addr"),ds->getitems("user"),ds->getitems("pass"),ds->getitema("fullxover"));
 				serv[server->serverid]=server;
 			}
 			//hpriority
@@ -182,7 +197,12 @@ class c_nget_config {
 						}else if (di->key=="_glevel"){
 							pgrouping->defglevel=atof(di->str.c_str());
 						}else{
-							c_server_priority *sprio=new c_server_priority(getserver(di->key),atof(di->str.c_str()));
+							server=getserver(di->key);
+							if (!server){
+								printf("prio section %s, server %s not found\n",ds->key.c_str(),di->key.c_str());
+								continue;
+							}
+							c_server_priority *sprio=new c_server_priority(server,atof(di->str.c_str()));
 							pgrouping->priorities.insert(t_server_priority_grouping::value_type(sprio->server->serverid,sprio));
 						}
 					}

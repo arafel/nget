@@ -164,7 +164,7 @@ generic_pred * make_pred(const char *optarg){
 				case '"':case '\'':
 					break;
 				default:
-					curpart+='\\';//avoid having to double escape stuff other than quotes.. ?
+					curpart+='\\';//avoid having to double escape stuff other than quotes..
 					break;
 			}
 			esc=0;
