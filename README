@@ -1,7 +1,8 @@
-nget 0.6  Copyright 1999 Matt Mueller <donut@azstarnet.com>
+nget 0.7  Copyright 1999 Matt Mueller <donut@azstarnet.com>
 
 Install:
-0) if you have uulib as a shared lib: ./configure and skip to step 2
+0) if you have the nget+uulib package, or have uulib as a shared lib: 
+  ./configure and skip to step 1.2a
 1) d/l uulibsrc from http://www.uni-frankfurt.de/~fp/uudeview 
 1.1) unpack it and run its ./configure && make
 1.2) ./configure --with-uulib=/dir/that/has/uulib
@@ -10,8 +11,9 @@ Install:
 1.2b) if you get strange errors about redo(and other vars) possibly being used
   uninitialized try compiling with a lower optimization (seems to occur with 
   gcc 2.7.*)
-2) make 
-3) make install
+2) make dep  (if you are using a compiler other than gcc, this may not work)
+3) make 
+4) make install
 
 (./configure --help will show extra options not described here)
 

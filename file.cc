@@ -1,3 +1,21 @@
+/*
+    file.* - file io classes
+    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
 #ifdef HAVE_CONFIG_H 
 #include "config.h"
 #endif
@@ -244,6 +262,52 @@ inline char * c_file_gz::dogets(char *data,size_t len){
 }
 #endif
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+int c_file_fd::dup(int dfd){
+	close();
+//	return (!(fs=fopen(name,mode)));
+	fd=::dup(dfd);
+	if (fd<0)return fd;
+	else return 0;
+}
+int c_file_fd::open(const char *host,int flags, int mode){
+	close();
+//	return (!(fs=fopen(name,mode)));
+	fd=::open(host,flags,mode);
+	if (fd<0)return fd;
+	else return 0;
+}
+int c_file_fd::doflush(void){
+	if (fd>=0)
+	     return fsync(fd);
+	return 0;
+}
+int c_file_fd::doclose(void){
+	int i=0;
+	i=::close(fd);
+	fd=-1;
+	return i;
+}
+inline int c_file_fd::isopen(void){
+	return (fd>=0);
+}
+inline size_t c_file_fd::dowrite(const void *data,size_t len){
+	return ::write(fd,(char*)data,len);
+}
+inline size_t c_file_fd::doread(void *data,size_t len){
+	return ::read(fd,data,len);
+}
+inline char * c_file_fd::dogets(char *data,size_t len){
+	int i=sock_gets(fd,data,len);//well, I guess it'll work for non sockets too.
+	if (i<=0)return NULL;
+	return data;
+	//return fd_gets(fd,data,len);
+}
+
+#ifdef USE_FILE_STREAM
 int c_file_stream::open(const char *name,const char * mode){
 	close();
 	return (!(fs=fopen(name,mode)));
@@ -271,6 +335,7 @@ inline size_t c_file_stream::doread(void *data,size_t len){
 inline char * c_file_stream::dogets(char *data,size_t len){
 	return fgets(data,len,fs);
 }
+#endif
 
 
 int c_file_tcp::open(const char *host,const char * port){

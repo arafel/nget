@@ -3,14 +3,17 @@
 #ifdef HAVE_CONFIG_H 
 #include "config.h"
 #endif
-#include <string.h>
+//#include <string.h>
 #define PERROR(a, args...) fprintf(stderr,a "\n" , ## args)
 #define PMSG(a, args...) printf(a "\n" , ## args)
 //#define PDEBUG(a, args...) printf(a , ## args)
-#define PDEBUG(a, args...) {}
+#define PDEBUG(d, a, args...) {if (debug>=d) printf(a "\n" , ## args);}
 //#define CURTIME curtime
 //extern time_t curtime;
 extern int debug;
+#define DEBUG_MIN 1
+#define DEBUG_MED 2
+#define DEBUG_ALL 3
 extern int quiet;
 //transport level errors
 #define EX_T_FATAL 5

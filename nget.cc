@@ -1,3 +1,23 @@
+/*
+    nget - command line nntp client
+    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
+
+
 #ifdef HAVE_CONFIG_H 
 #include "config.h"
 #endif
@@ -16,6 +36,8 @@
 #include "sockstuff.h"
 #include "prot_nntp.h"
 #include "log.h"
+#include "nget.h"
+#include "datfile.h"
 
 //####these should prolly go in some other file....
 c_error::c_error(int n, const char * s, ...){
@@ -81,7 +103,7 @@ void addoption(char *longo,int needarg,char shorto,char *adesc,char *desc){
 	cur++;
 }
 void print_help(void){
-      printf("nget v0.6 - nntp command line fetcher\n");
+      printf("nget v0.7 - nntp command line fetcher\n");
       printf("Copyright 1999 Matt Mueller <donut@azstarnet.com>\n");
       printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -123,13 +145,14 @@ void term_handler(int s){
 
 
 string nghome;
+c_data_file cfg;
+c_data_section *galias,*halias;
 
 int main(int argc,char ** argv){
 	int c=0,opt_idx;
-	char * group=NULL;
+	const char * group=NULL;
 //	atexit(cache_dbginfo);
 	init_my_timezone();
-	nntp.nntp_open(getenv("NNTPSERVER")?:"",NULL,NULL);
 //	nntp.nntp_open(getenv("NNTPSERVER")?:"localhost",NULL,NULL);
 	addoption("quiet",0,'q',0,"supress extra info");
 	addoption("host",1,'h',"\"HOST [user pass]\"","nntp host (default $NNTPSERVER) [optional authinfo]");
@@ -155,6 +178,13 @@ int main(int argc,char ** argv){
 	signal(SIGQUIT,term_handler);
 	nghome=getenv("HOME");
 	nghome.append("/.nget/");
+
+	cfg.setfilename((nghome + ".ngetrc").c_str());
+	cfg.read();
+	galias=cfg.data.getsection("galias");
+	halias=cfg.data.getsection("halias");
+	
+	
 	time(&lasttime);
 	srand(lasttime);
 	if (argc<2){
@@ -162,6 +192,24 @@ int main(int argc,char ** argv){
 	}
 	else {
 		int redo=0,redone=0,maxretry=20,badskip=0,linelimit=3,gflags=0,testmode=0,qstatus=0;
+		{
+			const char *s;
+			int t;
+			if (!halias || !(s=halias->getitema("default")))
+				s=getenv("NNTPSERVER")?:"";
+			nntp.nntp_open(s,NULL,NULL);
+			cfg.data.getitemi("debug",&debug);
+			cfg.data.getitemi("quiet",&quiet);
+			cfg.data.getitemi("limit",&linelimit);
+			cfg.data.getitemi("tries",&maxretry);
+			if (!cfg.data.getitemi("case",&t) && t==1)
+				gflags|= GETFILES_CASESENSITIVE;
+			if (!cfg.data.getitemi("complete",&t) && t==0)
+				gflags|= GETFILES_GETINCOMPLETE;
+			if (!cfg.data.getitemi("dupecheck",&t) && t==0)
+				gflags|= GETFILES_NODUPECHECK;
+		}
+		//printf("limit:%i tries:%i case:%i complete:%i dupcheck:%i\n",linelimit,maxretry,gflags&GETFILES_CASESENSITIVE,!(gflags&GETFILES_GETINCOMPLETE),!(gflags&GETFILES_NODUPECHECK));
 		while (1){
 			if (redo){
 				redo=0;
@@ -223,7 +271,7 @@ int main(int argc,char ** argv){
 					case 't':
 						maxretry=atoi(optarg);
 						if (maxretry==-1)
-							maxretry=INT_MAX;
+							maxretry=INT_MAX-1;
 						printf("max retries set to %i\n",maxretry);
 						break;
 					case 'l':
@@ -244,25 +292,30 @@ int main(int argc,char ** argv){
 						switch (c){	
 							case 'g':
 								if (badskip<2){
-									group=optarg;
-									nntp.nntp_group(optarg,1);
+									if (!galias || !(group=galias->getitema(optarg)))
+										group=optarg;
+									nntp.nntp_group(group,1);
 									if (badskip)
 										badskip=0;
 								}
 								break;
 							case 'G':
-								group=optarg;
-								nntp.nntp_group(optarg,0);
+								if (!galias || !(group=galias->getitema(optarg)))
+									group=optarg;
+								nntp.nntp_group(group,0);
 								break;
 							case 'h':{
 										 char *u=optarg,*p=NULL;
+										 const char *h;
 										 goodstrtok(&u,' ');
 										 if (u){
 											 p=u;
 											 goodstrtok(&p,' ');
 										 }
 										 badskip=0;
-										 nntp.nntp_open(optarg,u,p);
+										 if (!halias || !(h=halias->getitema(optarg)))
+											 h=optarg;
+										 nntp.nntp_open(h,u,p);
 									 }
 									 break;
 							case -12345:

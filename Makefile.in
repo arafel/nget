@@ -1,4 +1,4 @@
-CXXFLAGS=@CXXFLAGS@ -Wall @UUDIR@ @DEFS@
+CXXFLAGS=@CXXFLAGS@ -Wall @UUINC@ @DEFS@
 
 ##DODEBUG=1
 #ifdef DODEBUG
@@ -32,18 +32,16 @@ install=@INSTALL@
 
 all: .autostuff nget
 
-OBJS=nget.o prot_nntp.o sockstuff.o cache.o file.o misc.o myregex.o @UULIB@
+OBJS=nget.o prot_nntp.o sockstuff.o cache.o file.o misc.o myregex.o datfile.o nrange.o @UULIB@
 nget: $(OBJS) .depend 
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $@ $(LIBS)
 
-#ifdef UULIB
-#$(UULIB):
-#	(cd $(UUDIR); ./configure)
-#	make -C $(UUDIR) libuu.a
-#endif
+@NOUU@@UULIB@:
+@NOUU@	(cd @UUDIR@; ./configure)
+@NOUU@	make -C @UUDIR@ libuu.a
 
 
-filetest: filetest.o file.o
+filetest: filetest.o file.o sockstuff.o nrange.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LIBS)
 
 dep depend .depend:
@@ -86,7 +84,7 @@ clean:
 
 distclean: clean
 	-rm *~ config.h config.cache config.log Makefile stamp-h .depend
-	-touch .depend
+	-cp .depend.dist .depend
 		 
 
 #ifeq (.depend,$(wildcard .depend))

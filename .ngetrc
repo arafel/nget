@@ -1,0 +1,28 @@
+//example .ngetrc, copy to your ~/.nget/ dir, and edit to your liking.
+
+//default settings
+tries=20
+case=0
+complete=1
+dupecheck=1
+limit=3
+quiet=0
+
+//hostname aliases
+//Note that a host alias of "default" is special, and will be used instead of
+//$NNTPSERVER if no host is supplied on the command line.
+//Also note that aliases cannot (currently) be recursive.  If anyone really
+//happens to want this (and can give me a good reason) I'll add it.
+{halias
+ default=news.server2.com
+ 1=news.server1.com
+ foo=nntp.bar.org
+}
+
+//newsgroup aliases
+{galias
+ ac=alt.chocobo
+ chocobo=alt.chocobo
+ acwww=alt.chocobo.wark.wark.wark
+ wark=alt.chocobo.wark.wark.wark
+}

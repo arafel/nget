@@ -1,4 +1,4 @@
-.TH nget 1 "18 Jun 1999"
+.TH nget 1 "10 Jul 1999"
 .SH NAME
 nget \- retrieve files from NNTP hosts
 .SH SYNOPSIS
@@ -7,7 +7,83 @@ nget \- retrieve files from NNTP hosts
 .B nget
 retrieves messages matching a regular expression, and decodes any files
 contained within.  Multipart messages are automatically pieced together.
+.SH OPTIONS
+.PP
+.IP "-q/--quiet"
+Disable printing of merely informative messages.  Errors will still be printed.
+.IP "-h/--host host"
+Nntp host to use for subsequent commands.  In the simplest form, merely an ip
+or dns for the host.  Can also specify authenticication by using a form such as
+"hostname user pass".  See the AUTHENTICIATION section below for important
+notes on this.
+.IP "-g/--group group"
+Newsgroup to use for subsequent commands.
+.IP "-G/--quickgroup group"
+Like --group, but does not retrieve new headers.
+.IP "-r/--retrieve regex"
+Matches regex against subjects of previously selected group, and retrieves ones
+that match.
+.IP "-T/--testmode"
+Causes --retrieve to merely print out all matching files.
+.IP "-t/--tries int"
+Set maximum number of retries.  -1 will retry indefinatly (probably not a good
+idea).
+.IP "-l/--limit int"
+Set the minimum number of lines a message (or total number of lines for a
+multi-part message) must have to be considered for retrieval.  
+.IP "-i/--incomplete"
+Retrieve files with missing parts.
+.IP "-I/--complete"
+Retrieve only files with all parts.
+.IP "-c/--case"
+Match case sensitively.
+.IP "-C/--nocase"
+Match case insensitively.
+.IP "-d/--dupecheck"
+Check to make sure you don't already have files.  This is done in two ways.
+The first is by compiling a list of all files in the current directory, then
+checking against all messages to be retrieved to see if one of the filenames
+shows up in the subject.  This works reasonably well, though sometimes the
+filename isn't in the subject.  It can also cause problems if you happen to
+have files in the directory named silly things like "a", in which case all
+messages with the word "a" in them will be skipped.  However, it is still smart
+enough not to skip messages that merely have a word containing "a".  The second
+method is by setting a flag in the header cache that will prevent it from being
+retrieved again.
+.IP "-D/--nodupecheck"
+Don't check either of the --dupecheck methods, retrieve any messages that
+match.
+.IP "-?/--help"
+Show help.
+.SH CONFIGURATION
+Upon startup, nget will read ~/.nget/.ngetrc for default configuration values and host/group
+aliases.  An example .ngetrc should have been included with nget.
 .P
+Options are specified one per line in the form:
+.br
+.B key=value
+.br
+Subsections and specified in the form 
+.br
+.B {section_name
+.br
+.B data
+.br
+.B }
+.br
+where data is any number of options.
+.P
+Options that can be specified are: 
+.br
+Integral: limit, tries
+.br
+Boolean(0/1): case, complete, dupecheck, quiet
+.P
+Aliases are defined in a subsection where section_name is either halias or
+galias, and data is any number of options where key is the alias and value is
+the expanded text.  In the host alias section, an alias with a key of "default"
+will override the default behaviour of using the $NNTPSERVER variable.
+.SH AUTHENTICATION
 Servers requiring authentication are accessable by specifying the host such as
 -h "hostname user pass".  However, this will make your user and password
 visable to other users on the system, and is annoying to type.  So you should
@@ -23,24 +99,30 @@ retrieve all the ones that have more than 50 lines:
 .br
 .B nget -g alt.binaries.pictures.linux -l 50 -r "penguin.*png"
 
+.SH ENVIRONMENT
+.PP
+.IP "NNTPSERVER"
+Default host to use.
+.SH FILES
+.PP
+.IP "~/.nget/"
+All configuration and cache files are stored here.
+.IP "~/.nget/.ngetrc"
+Configuration file.
+.IP "~/.nget/hostname/"
+Cache files are stored here.
+.IP "~/.nget/hostname/.authinfo"
+User/pass authentication information.  Be sure to set to owner readable only.
 .SH BUGS
 There should be some quotes in those above examples, but I'm no man page guru.
+If someone wants to clean up this manpage and fix the little things like that,
+feel free.
 .P
 In multi part messages, part 0/x is usually a description.. this will be saved.
 But sometimes the description will be in 1/x, in which case it is not saved.
-This would either need modification of libuu, or some ugly hacks.  I'll look
-into it in a later version.
-.P
-This man page doesn't list many of the options, see
-.B nget --help
-for the full list.
-.P
-Memory usage on large newsgroups seems a bit extreme.  I don't quite know why.
-I free all headers before doing the article retrieving, so it should use
-practically no memory at that point. (except for the download buffer).  I'd
-guess its a memory leak, but I can't find any code flaws, and it doesn't get
-worse if you do multiple loads/frees of the header data.  Perhaps its some STL
-thing.  Oh well.
+Well, I found the UUInfo stuff, so it'll now print out this information..
+however a lot of the time it is useless stuff, so I'm not too sure about saving
+it to a file all the time.
 .SH AUTHOR
 Matt Mueller <donut@azstarnet.com>
 .P

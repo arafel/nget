@@ -1,9 +1,11 @@
- * possible extension to the tempfile name as checksums idea to include both
-	the group and the header info in the same checksum, to allow for a 8.3
-	filename.  I don't really care much, as I've no need for it, but maybe
-	if someone really needs it...
- * better fix for buildflist's making a regex outta local filenames that have
- 	special chars in them.
+definataly gonna do:
+ 
+ * allow searching based upon date/author/lines etc.  ideally, something like:
+   nget -r (date > 03/04/1999 && (author = bob && subject = file\.) || (subject
+   = blah))
+
+might do eventually:
+
  * check for existance of files, don't d/l what we have already (overridable?)
 	use substring match to select filename? (ie: -r "heres the
 	files:.*(snarf\.r..) ").
@@ -14,7 +16,14 @@
 	d/l'ing multiples of the same file.. could be adapted to such though,
 	by adding files to a similar list after they are d/l'd and we know
 	their names.
- * allow searching based upon date/author/lines etc.  ideally, something like:
-   nget -r (date > 03/04/1999 && (author = bob && subject = file\.) || (subject
-   = blah))
 
+only considering:
+
+ * store fileread info in a seperate file, so we don't have to write out the
+   big ole cache again. -- partially done, just need to implement
+   saving/loading/checking/adding ... DONE... but should we store only the anum
+   of the first part, like now, or all of the anums?
+ * possible extension to the tempfile name as checksums idea to include both
+	the group and the header info in the same checksum, to allow for a 8.3
+	filename.  I don't really care much, as I've no need for it, but maybe
+	if someone really needs it...

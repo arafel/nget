@@ -1,3 +1,21 @@
+/*
+    file.* - file io classes
+    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
 #ifndef _FILE_H_
 #define _FILE_H_
 #ifdef HAVE_CONFIG_H 
@@ -71,12 +89,29 @@ class c_file {
 	virtual int isopen(void)=0;
 };
 
+class c_file_fd : public c_file {
+  private:
+	int fd;
+	
+	virtual char * dogets(char *data,size_t len);
+	virtual size_t dowrite(const void *buf,size_t len);
+	virtual size_t doread(void *buf,size_t len);
+	virtual int doflush(void);
+	virtual int doclose(void);
+  public:
+	virtual int isopen(void);	
+	int open(const char *name,int flags,int mode=0);
+	int dup(int dfd);
+	c_file_fd(void){fd=-1;};
+	~c_file_fd(){close();};
+};
+#ifdef USE_FILE_STREAM
 class c_file_stream : public c_file {
   private:
 	FILE *fs;
 	
 	virtual char * dogets(char *data,size_t len);
-	virtual size_t dowrite(const void *buf,size_t len);
+	virtual size_t dowrite(const void *buf,size_t len);//fwrite doesn't seem to be able to notice out of disk errors. be warned.
 	virtual size_t doread(void *buf,size_t len);
 	virtual int doflush(void);
 	virtual int doclose(void);
@@ -86,6 +121,7 @@ class c_file_stream : public c_file {
 	c_file_stream(void){fs=NULL;};
 	~c_file_stream(){close();};
 };
+#endif
 class c_file_tcp : public c_file {
   private:
 	int sock;

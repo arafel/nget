@@ -1,3 +1,21 @@
+/*
+    cache.* - nntp header cache code
+    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
 #ifndef _CACHE_H_
 #define _CACHE_H_
 #ifdef HAVE_CONFIG_H
@@ -11,9 +29,22 @@
 #else
 #include <multimap.h>
 #endif
+#include <list.h>
+#include "nrange.h"
 #include "file.h"
+#include "log.h"
 
 #define CACHE_VERSION "NGET2"
+
+class c_rcount {
+	private:
+		int rcount;
+	public:
+		void inc_rcount(void){rcount++;}
+		void dec_rcount(void){rcount--;if (!rcount) delete this;}//no longer needed.
+		c_rcount():rcount(1){};//initialize rcount to 1, presumably if we are making a new one, we are going to use it for something. :)
+		~c_rcount(){if (rcount) PDEBUG(DEBUG_MIN,"freeing c_rcount %p while rcount==%i\n",this,rcount);};
+};
 
 typedef unsigned long t_id;
 class c_nntp_header {
@@ -46,9 +77,9 @@ class c_nntp_part {
 
 typedef map<int,c_nntp_part*,less<int> > t_nntp_file_parts;
 
-#define FILEFLAG_READ 1
+//#define FILEFLAG_READ 1
 
-class c_nntp_file {
+class c_nntp_file : public c_rcount{
 	public:
 		t_nntp_file_parts parts;
 		int req,have;
@@ -75,6 +106,7 @@ class c_nntp_files_u {
 		ulong bytes,lines;
 		t_nntp_files_u files;
 		c_nntp_files_u(void):bytes(0),lines(0){}
+		~c_nntp_files_u();
 };
 
 #define GETFILES_CASESENSITIVE  1
@@ -83,7 +115,7 @@ class c_nntp_files_u {
 
 class c_nntp_cache {
 	public:
-		string file;
+		string cdir,file;
 		t_nntp_files files;
 		ulong high,low,num;
 		int saveit;
@@ -91,8 +123,9 @@ class c_nntp_cache {
 		//int additem(ulong an,char *s,const char * a,time_t d, ulong b, ulong l){
 		int additem(c_nntp_header *h);
 		ulong flushlow(ulong newlow);
-		c_nntp_files_u* getfiles(c_nntp_files_u * fc,const char *match, unsigned long linelimit,int flags);
+		c_nntp_files_u* getfiles(c_nntp_files_u * fc,c_nrange *grange,const char *match, unsigned long linelimit,int flags);
 		c_nntp_cache(string path,string hid,string nid);
 		~c_nntp_cache();
 };
+
 #endif

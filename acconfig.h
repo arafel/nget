@@ -20,7 +20,7 @@
 #undef CHECKSUM
 
 /* compare duplicate files? */
-#undef USE_SMW
+#undef USE_FILECOMPARE
 
 @BOTTOM@
 

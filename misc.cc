@@ -1,3 +1,21 @@
+/*
+    misc.* - misc functions
+    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
 #ifdef HAVE_CONFIG_H 
 #include "config.h"
 #endif
@@ -86,11 +104,9 @@ int fexists(const char * f){
 int testmkdir(const char * dir,int mode){
 	struct stat statbuf;
 	if (stat(dir,&statbuf)){
-		if (mkdir(dir,mode)){
-			return -1;
-		}
+		return (mkdir(dir,mode));
 	} else if (!S_ISDIR(statbuf.st_mode)){
-		return -2;
+		return ENOTDIR;
 	}
 	return 0;
 }																	
@@ -296,7 +312,7 @@ time_t decode_textdate(const char * cbuf){
 		PERROR("decode_textdate: unknown %s",cbuf);
 		return 0;
 	}else
-		PDEBUG("decode_textdate: %s %i %i %i %i %i %i %i",tdt,tblock.tm_year,tblock.tm_mon,tblock.tm_mday,tblock.tm_hour,tblock.tm_min,tblock.tm_sec,td_tz);
+		PDEBUG(DEBUG_ALL,"decode_textdate: %s %i %i %i %i %i %i %i",tdt,tblock.tm_year,tblock.tm_mon,tblock.tm_mday,tblock.tm_hour,tblock.tm_min,tblock.tm_sec,td_tz);
 	return mktime(&tblock)-my_timezone-td_tz;
 }
 #ifdef NO_REGEXPS
@@ -403,11 +419,11 @@ time_t decode_textdate(const char * cbuf){
 #endif
 
 void setint0 (int *i){
-	PDEBUG("setint0 %p",i);
+	PDEBUG(DEBUG_MED, "setint0 %p",i);
 	*i=0;
 }
 
-#ifdef	USE_SMW					// check for duplicate files
+#ifdef	USE_FILECOMPARE					// check for duplicate files
 int filecompare(const char *old_fn,const char *nfn){
 	int	same=0;
 	FILE	*old_f, *new_f;

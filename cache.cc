@@ -1,9 +1,29 @@
+/*
+    cache.* - nntp header cache code
+    Copyright (C) 1999  Matthew Mueller <donut@azstarnet.com>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
 #include "myregex.h"
 #include "cache.h"
 #include "misc.h"
 #include "log.h"
 #include SLIST_H
 #include <glob.h>
+#include <errno.h>
+#include "nget.h"
 
 int c_nntp_header::parsepnum(const char *str,const char *soff){
 	const char *p;
@@ -110,6 +130,7 @@ void buildflist(filematchlist **l,longlist **a){
 	file_match *fm;
 	c_regex amatch("^[0-9]+\\.txt",REG_EXTENDED|REG_ICASE|REG_NOSUB);
 	char buf[1024],*cp;
+	int sl;
 	for (int i=0;i<globbuf.gl_pathc;i++){
 /*		asprintf(&s,"*[!"ALNUM"]%s[!"ALNUM"]*",globbuf.gl_pathv[i]);
 		(*l)->push_front(s);
@@ -118,10 +139,22 @@ void buildflist(filematchlist **l,longlist **a){
 		asprintf(&s,"%s[!"ALNUM"]*",globbuf.gl_pathv[i]);*/
 		//no point in using fnmatch.. need to do this gross multi string per file kludge, and...
 		//sprintf(buf,"(^|[^[:alnum:]]+)%s([^[:alnum:]]+|$)",globbuf.gl_pathv[i]);//this is about the same speed as the 3 fnmatchs
-		sprintf(buf,"\\<%s\\>",globbuf.gl_pathv[i]);//this is much faster
-		cp=buf;
-		while ((cp=strpbrk(cp,"()<>|[]")))
-			*cp='.';//filter out some special chars.. really should just escape them, but thats a bit harder
+//		sl=sprintf(buf,"\\<%s\\>",globbuf.gl_pathv[i]);//this is much faster
+//		cp=buf+2;
+//		while ((cp=strpbrk(cp,"()|[]"))&&cp-buf<sl-2)
+//			*cp='.';//filter out some special chars.. really should just escape them, but thats a bit harder
+		sl=0;
+		buf[sl++]='\\';buf[sl++]='<';//match beginning of word
+		cp=globbuf.gl_pathv[i];
+		while (*cp){
+			if (strchr("()|[]\\.+*^$",*cp))
+				buf[sl++]='\\';//escape special chars
+			buf[sl++]=*cp;
+			cp++;
+		}
+		buf[sl++]='\\';buf[sl++]='>';//match end of word
+		buf[sl++]=0;
+//		printf("%s\n",buf);//this is much faster
 //		s=new c_regex(buf,REG_EXTENDED|REG_ICASE|REG_NOSUB);
 		fm=new file_match(buf,REG_EXTENDED|REG_ICASE|REG_NOSUB);
 		if(stat(globbuf.gl_pathv[i],&stbuf)==0)
@@ -150,7 +183,7 @@ int checkhavefile(filematchlist *fl,longlist *al,const char *f,ulong anum,ulong 
 	if (al)
 		for (cura=al->begin();cura!=al->end();++cura){
 			if (*cura==anum){
-				printf("already have %s\n",f);
+				printf("already have(%lu) %s\n",anum,f);
 				return 1;
 			}
 		}
@@ -172,7 +205,7 @@ int checkhavefile(filematchlist *fl,longlist *al,const char *f,ulong anum,ulong 
 }
 
 
-c_nntp_files_u* c_nntp_cache::getfiles(c_nntp_files_u * fc,const char *match, unsigned long linelimit,int flags){
+c_nntp_files_u* c_nntp_cache::getfiles(c_nntp_files_u * fc,c_nrange *grange,const char *match, unsigned long linelimit,int flags){
 	if (fc==NULL) fc=new c_nntp_files_u;
 	c_regex hreg(match,REG_EXTENDED + ((flags&GETFILES_CASESENSITIVE)?0:REG_ICASE));
 
@@ -186,15 +219,18 @@ c_nntp_files_u* c_nntp_cache::getfiles(c_nntp_files_u * fc,const char *match, un
 	ulong banum;
 	for(fi = files.begin();fi!=files.end();++fi){
 		f=(*fi).second;
-		if (f->lines>=linelimit && (flags&GETFILES_NODUPECHECK || !(f->flags&FILEFLAG_READ)) && (f->have>=f->req || flags&GETFILES_GETINCOMPLETE) && !hreg.match(f->subject.c_str())){//matches user spec
+		banum=f->banum();
+		//if (f->lines>=linelimit && (flags&GETFILES_NODUPECHECK || !(f->flags&FILEFLAG_READ)) && (f->have>=f->req || flags&GETFILES_GETINCOMPLETE) && !hreg.match(f->subject.c_str())){//matches user spec
+		if (f->lines>=linelimit && (flags&GETFILES_NODUPECHECK || !(grange->check(banum))) && (f->have>=f->req || flags&GETFILES_GETINCOMPLETE) && !hreg.match(f->subject.c_str())){//matches user spec
 //			fc->additem(i);
 //			if (!(flags&GETFILES_NODUPECHECK) && f->isread())
 //				continue;
-			banum=f->banum();
+//			banum=f->banum();
 			if (fc->files.find(banum)!=fc->files.end())
 				continue;
 			if (!(flags&GETFILES_NODUPECHECK) && checkhavefile(flist,alist,f->subject.c_str(),banum,f->bytes))
 				continue;
+			f->inc_rcount();
 			fc->files[banum]=f;
 			fc->lines+=f->lines;
 			fc->bytes+=f->bytes;
@@ -279,7 +315,8 @@ ulong c_nntp_cache::flushlow(ulong newlow){
 			}
 		}
 		if (nf->parts.empty()){
-			delete nf;
+			nf->dec_rcount();
+//			delete nf;
 			files.erase(i);
 		}
 	}
@@ -290,24 +327,30 @@ ulong c_nntp_cache::flushlow(ulong newlow){
 	return count;
 }
 
-c_nntp_cache::c_nntp_cache(string path,string hid,string nid):file(path),high(0),low(INT_MAX),num(0){
+c_nntp_cache::c_nntp_cache(string path,string hid,string nid):cdir(path),high(0),low(ULONG_MAX),num(0){
 #ifdef HAVE_LIBZ
 	c_file_gz f;
 #else
-	c_file_stream f;
+	c_file_fd f;
 #endif
 	f.initrbuf(2048);
 	saveit=0;
-	testmkdir(file.c_str(),S_IRWXU);
-	file.append(hid);
-	testmkdir(file.c_str(),S_IRWXU);
-	file.append("/");
-	file.append(nid);
+	int r=testmkdir(cdir.c_str(),S_IRWXU);
+	if (r) throw new c_error(EX_A_FATAL,"error creating dir %s: %s(%i)",cdir.c_str(),strerror(r==-1?errno:r),r==-1?errno:r);
+	cdir.append(hid);
+	cdir.append("/");
+	file=nid;
 #ifdef HAVE_LIBZ
 	file.append(".gz");
 #endif
 	fileread=0;
-	if (!f.open(file.c_str(),"r")){
+	if (!f.open((cdir + file).c_str(),
+#ifdef HAVE_LIBZ
+				"r"
+#else
+				O_RDONLY
+#endif
+				)){
 		char *buf;
 		int mode=2;
 		c_nntp_file	*nf=NULL;
@@ -376,38 +419,59 @@ c_nntp_cache::~c_nntp_cache(){
 #ifdef HAVE_LIBZ
 	c_file_gz f;
 #else
-	c_file_stream f;
+	c_file_fd f;
 #endif
 	t_nntp_files::iterator i;
-	if (saveit && (files.size() || fileread) && !f.open(file.c_str(),"w")){
-		if (!quiet){printf("saving cache: %lu headers, %i files..",num,files.size());fflush(stdout);}
-		c_nntp_file *nf;
-		t_nntp_file_parts::iterator pi;
-		c_nntp_part *np;
-		ulong count=0;
-		f.putf(CACHE_VERSION"\t%lu\t%lu\t%lu\n",low,high,num);
-		for(i = files.begin();i!=files.end();++i){
-			nf=(*i).second;
-			f.putf("%i\t%lu\t%lu\t%s\t%s\t%i\t%i\n",nf->req,nf->flags,nf->mid,nf->subject.c_str(),nf->author.c_str(),nf->partoff,nf->tailoff);
-			for(pi = nf->parts.begin();pi!=nf->parts.end();++pi){
-				np=(*pi).second;
-				f.putf("%i\t%lu\t%lu\t%lu\t%lu\n",np->partnum,np->articlenum,np->date,np->bytes,np->lines);
-				count++;
+	if (saveit && (files.size() || fileread)){
+		int r=testmkdir(cdir.c_str(),S_IRWXU);
+		if (r) printf("error creating dir %s: %s(%i)\n",cdir.c_str(),strerror(r==-1?errno:r),r==-1?errno:r);
+		else if(!(r=f.open((cdir + file).c_str(),
+#ifdef HAVE_LIBZ
+						"w"
+#else
+						O_CREAT|O_WRONLY|O_TRUNC,PUBMODE
+#endif
+						))){
+			if (!quiet){printf("saving cache: %lu headers, %i files..",num,files.size());fflush(stdout);}
+			c_nntp_file *nf;
+			t_nntp_file_parts::iterator pi;
+			c_nntp_part *np;
+			ulong count=0;
+			f.putf(CACHE_VERSION"\t%lu\t%lu\t%lu\n",low,high,num);
+			for(i = files.begin();i!=files.end();++i){
+				nf=(*i).second;
+				f.putf("%i\t%lu\t%lu\t%s\t%s\t%i\t%i\n",nf->req,nf->flags,nf->mid,nf->subject.c_str(),nf->author.c_str(),nf->partoff,nf->tailoff);
+				for(pi = nf->parts.begin();pi!=nf->parts.end();++pi){
+					np=(*pi).second;
+					f.putf("%i\t%lu\t%lu\t%lu\t%lu\n",np->partnum,np->articlenum,np->date,np->bytes,np->lines);
+					count++;
+				}
+				f.putf(".\n");
+				//nf->storef(f);
+				//delete nf;
+				nf->dec_rcount();
 			}
-			f.putf(".\n");
-			//nf->storef(f);
-			delete nf;
+			f.close();
+			if (!quiet) printf(" done.\n");
+			if (count<num){
+				printf("warning: wrote %lu parts from cache, expecting %lu\n",count,num);
+			}
+			return;
+		}else{
+			printf("error opening %s: %s(%i)\n",(cdir + file).c_str(),strerror(errno),errno);
 		}
-		f.close();
-		if (!quiet) printf(" done.\n");
-		if (count<num){
-			printf("warning: wrote %lu parts from cache, expecting %lu\n",count,num);
-		}
-	}else{
-		if (!quiet){printf("freeing cache: %lu headers, %i files..",num,files.size());fflush(stdout);}
-		for(i = files.begin();i!=files.end();++i){
-			delete (*i).second;
-		}
-		if (!quiet) printf(" done.\n");
+	}
+
+	if (!quiet){printf("freeing cache: %lu headers, %i files..",num,files.size());fflush(stdout);}
+	for(i = files.begin();i!=files.end();++i){
+		//delete (*i).second;
+		(*i).second->dec_rcount();
+	}
+	if (!quiet) printf(" done.\n");
+}
+c_nntp_files_u::~c_nntp_files_u(){
+	t_nntp_files_u::iterator i;
+	for(i = files.begin();i!=files.end();++i){
+		(*i).second->dec_rcount();
 	}
 }

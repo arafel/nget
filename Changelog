@@ -1,3 +1,26 @@
+nget (0.7) unstable; urgency=low
+
+  * Stores file read info in a seperate file, so it does not need to resave the
+    cache if the only change was to mark some messages read.
+  * Added +uulib version of the source distro, for easier compilation.
+  * Now recognizes when there is no disk space left, and aborts.  fwrite()
+    doesn't seem to report errors correctly, at least on linux glibc2.  man
+    fwrite says "If an error occurs, or the end-of-file is reached, the return
+    value is a short item count (or zero)."  However fwrite() would _always_
+    return the full item count, even if the disk was full.  I guess this is a
+    libc bug. (fyi, this is on glibc 2.0.7).  It now uses write(), which does
+    handle errors correctly.  
+  * Added consistancy checking on header retrieval. (Steven Wilcoxon) 
+  * Manpage now contains all info that it should.  
+  * Fixed dupe filename checking. (broke in 0.5)
+  * Only creates a host cache directory if there is something to be written in
+    it.
+  * Added .ngetrc, with default options, and host/group aliases.
+  * Added check for -luulib in configure.in, seems some distro's have it
+    installed as such, instead of -luu.
+
+ -- Matt Mueller <donut@azstarnet.com>  Tue,  6 Jul 1999 17:39:30 -0700
+
 nget (0.6) unstable; urgency=low
 
   * Added "file read" flag to stop redundant downloading.
