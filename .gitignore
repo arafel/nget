@@ -1,0 +1,10 @@
+*.o
+*.d
+config.h
+configure
+config.log
+config.status
+Makefile
+par2/Makefile
+test/Makefile
+*.a
