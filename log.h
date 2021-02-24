@@ -41,7 +41,7 @@ extern int quiet;
 
 class baseEx {
 	protected:
-		string str;
+		std::string str;
 		const char *mfile;
 		int mline;
 		void set_params(const char *file, int line, const char * s, va_list ap);
