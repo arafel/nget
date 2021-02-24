@@ -32,7 +32,7 @@ W32DISTTXTFILES=COPYING Changelog FAQ README.win32 nget.txt ngetlite.txt _ngetrc
 W32DISTBINFILES=$(NGET) $(NGETLITE)
 W32DISTFILES=$(W32DISTTXTFILES) $(W32DISTBINFILES)
 
-OBJS=nget.o status.o prot_nntp.o decode.o texthandler.o sockpool.o sockstuff.o cache.o grouplist.o dupe_file.o file.o file_gz.o termstuff.o path.o misc.o strtoker.o strreps.o myregex.o cfgfile.o argparser.o etree.o nrange.o log.o server.o par.o knapsack.o compat/compat.a par2/par2.a @UULIB@
+OBJS=nget.o status.o prot_nntp.o decode.o texthandler.o sockpool.o sockstuff.o cache.o grouplist.o dupe_file.o file.o file_gz.o termstuff.o path.o misc.o strtoker.o strreps.o myregex.o cfgfile.o argparser.o  nrange.o log.o server.o par.o knapsack.o compat/compat.a par2/par2.a @UULIB@
 $(NGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
@@ -94,12 +94,12 @@ cygwin32dist-static: $(W32DISTFILES)
 
 .autostuff: configure config.h.in config.h Makefile config.status
 
-${srcdir}/configure: configure.in aclocal.m4
+${srcdir}/configure: configure.ac aclocal.m4
 	cd ${srcdir} && autoconf
 
 # autoheader might not change config.h.in, so touch a stamp file.
 ${srcdir}/config.h.in: stamp-h.in
-${srcdir}/stamp-h.in: configure.in aclocal.m4
+${srcdir}/stamp-h.in: configure.ac aclocal.m4
 #config.h.top config.h.bot
 	cd ${srcdir} && autoheader
 	echo timestamp > ${srcdir}/stamp-h.in

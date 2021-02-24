@@ -115,7 +115,7 @@ string regex2wildmat(const string &repat, bool ignorecase=false);
 template <class int_type>
 string durationstr(int_type duration){
 	int_type s = duration%60, m = duration/60%60, h = duration/60/60;
-	ostringstream oss; 
+    ostringstream oss; 
 	if (h)
 		oss << h << 'h';
 	if (h || m)

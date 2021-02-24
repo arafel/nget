@@ -26,6 +26,8 @@
 #include <string>
 #include <list>
 
+using namespace std;
+
 #ifdef WIN32
 inline bool is_pathsep(char c) {return c=='/' || c=='\\';}
 bool is_abspath(const char *p);

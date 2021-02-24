@@ -1,6 +1,8 @@
 #ifndef ___FILECONF_H__
 #define ___FILECONF_H__
 
+#include "config.h"
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>

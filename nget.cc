@@ -192,7 +192,7 @@ static void addoptions(void)
 	addoption(NULL,0,0,NULL,NULL);
 };
 static void print_help(void){
-	printf("nget v"PACKAGE_VERSION" - nntp command line fetcher\n");
+	printf("nget v" PACKAGE_VERSION " - nntp command line fetcher\n");
 	printf("Copyright 1999-2004 Matthew Mueller <donut AT dakotacom.net>\n");
 	printf("\n\
 This program is free software; you can redistribute it and/or modify\n\
@@ -560,7 +560,8 @@ static int do_args(int argc, const char **argv,nget_options options,int sub){
 		switch (c){
 			case 'T':
 				options.gflags|=GETFILES_TESTMODE;
-				PDEBUG(DEBUG_MIN,"testmode now %i",options.gflags&GETFILES_TESTMODE > 0);
+				PDEBUG(DEBUG_MIN,"testmode now %i",
+                (options.gflags & GETFILES_TESTMODE) > 0);
 				break;
 			case OPT_TEST_MULTI:
 				options.set_test_multi(loptarg);

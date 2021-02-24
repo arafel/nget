@@ -66,11 +66,11 @@ public:
   // Comparison operators for searching
   bool operator <(const VerificationHashEntry &r) const 
   {
-    return crc < r.crc || crc == r.crc && hash < r.hash;
+    return (crc < r.crc || crc == r.crc) && hash < r.hash;
   }
   bool operator >(const VerificationHashEntry &r) const 
   {
-    return crc > r.crc || crc == r.crc && hash > r.hash;
+    return (crc > r.crc || crc == r.crc) && hash > r.hash;
   }
   bool operator ==(const VerificationHashEntry &r) const 
   {
@@ -183,11 +183,11 @@ inline const VerificationHashEntry* VerificationHashEntry::Search(const Verifica
 
   while (entry)
   {
-    if (entry->crc < crc || entry->crc == crc && entry->hash < hash)
+    if ((entry->crc < crc || entry->crc == crc) && entry->hash < hash)
     {
       entry = entry->right;
     }
-    else if (entry->crc > crc || entry->crc == crc && entry->hash > hash)
+    else if ((entry->crc > crc || entry->crc == crc) && entry->hash > hash)
     {
       entry = entry->left;
     }

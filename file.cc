@@ -49,7 +49,7 @@ void copyfile(c_file *of, c_file *nf) {
 		nf->write(buf, len);
 }
 
-int c_file_buffy::bfill(uchar *b,int l){
+int c_file_buffy::bfill(uint8_t *b,int l){
 	return fileptr->read(b,l);
 }
 

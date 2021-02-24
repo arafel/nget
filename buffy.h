@@ -69,7 +69,7 @@ class c_buffy {
 	protected:
 		int bhead,btail;
 #define buffy_bufsize 2048 //must be a multiple of 2 so that we can use &=bufmask which is much faster than %=bufsize
-		uchar buf[buffy_bufsize];
+		uint8_t buf[buffy_bufsize];
 #define buffy_bufmask 2047
 
 		int buftailfree(void){
@@ -78,7 +78,7 @@ class c_buffy {
 		}
 		void inchead(int i){bhead+=i;bhead&=buffy_bufmask;}
 		void inctail(int i){btail+=i;btail&=buffy_bufmask;}
-		virtual int bfill(uchar *b,int l)=0;
+		virtual int bfill(uint8_t *b,int l)=0;
 		int dofill(void){
 			int i=bfill(buf+btail,buftailfree());
 			if (i<=0)return i;

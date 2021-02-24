@@ -23,6 +23,8 @@
 #include "config.h"
 #endif
 
+#define HAVE_SSTREAM
+
 #ifdef HAVE_SSTREAM
 //If we have the new sstream, we don't need to do anything.
 #include <sstream>
@@ -32,10 +34,10 @@
 #include <string>
 
 class ostringstream : public ostrstream {
-	public:
-		string str(void) {return string(ostrstream::str(), pcount());} //ostrstream::str() is not null terminated.
+  public:
+    string str(void) {return string(ostrstream::str(), pcount());} //ostrstream::str() is not null terminated.
 };
-class istringstream : public istrstream { }
+class istringstream : public istrstream { };
 #endif
 
 #endif

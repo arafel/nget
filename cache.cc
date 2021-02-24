@@ -510,7 +510,7 @@ c_file *dofileopen(string file, string mode, int gz=-2){
 #ifdef HAVE_LIBZ
 	if (gz){
 		if (gz>0){
-			char blah[10];
+			char blah[11];
 			sprintf(blah,"%i",gz);
 			mode.append(blah);
 		}

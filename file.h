@@ -47,7 +47,7 @@ class c_file;
 class c_file_buffy : public c_buffy{
 	private:
 		c_file *fileptr;
-		virtual int bfill(uchar *b,int l);
+		virtual int bfill(uint8_t *b,int l);
 	public:
 		CharBuffer cbuf;
 		char *cbufp(void){return cbuf.c_str();}

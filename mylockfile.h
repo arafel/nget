@@ -183,8 +183,10 @@ class c_lockfile{
 			while ((locklocksfd=open(locklocksfile.c_str(),O_RDWR|O_CREAT|O_EXCL,0777)) == -1) {
 				if (errno==EEXIST)
 					sleep(1);
-				else
-					throw ApplicationExFatal(Ex_INIT,"c_lockfile: open %s (%s)",locklocksfile.c_str(),strerror(errno));
+				else {
+          fprintf(stderr, "c_lockfile: open %s (%s)",locklocksfile.c_str(),strerror(errno));
+          exit(EXIT_FAILURE);
+        }
 			}
 			close(locklocksfd);
 			PDEBUG(FLOCK_DEBUG_LEV,"~c_lockfile %li: created %s",mypid,locklocksfile.c_str());
@@ -193,10 +195,11 @@ class c_lockfile{
 			// emptied of locks and unlinked, we're nearly done.
 			if ((fd=open(locksfile.c_str(),O_RDWR)) == -1) {
 				if (errno!=ENOENT) {
-					int savederrno=errno;
+					/* int savederrno=errno; */
 					if (unlink(locklocksfile.c_str()) == -1)
 						PERROR("c_lockfile %li: unlink %s: %s",mypid,locklocksfile.c_str(),strerror(errno));
-					throw ApplicationExFatal(Ex_INIT,"c_lockfile: open %s (%s)",locksfile.c_str(),strerror(savederrno));
+          fprintf(stderr, "c_lockfile: open %s (%s)",locklocksfile.c_str(),strerror(errno));
+          exit(EXIT_FAILURE);
 				}
 			}
 			if (fd>=0) {
@@ -205,8 +208,10 @@ class c_lockfile{
 				mylock.l_type=F_WRLCK;
 				mylock.l_whence=SEEK_SET;
 				PDEBUG(FLOCK_DEBUG_LEV,"~c_lockfile %li: checking (%i)",mypid,fd);
-				if (fcntl(fd,F_GETLK,&mylock) == -1)
-					throw ApplicationExFatal(Ex_INIT,"~c_lockfile: fcntl %i: (%s)",fd,strerror(errno));
+				if (fcntl(fd,F_GETLK,&mylock) == -1) {
+          fprintf(stderr, "c_lockfile: open %s (%s)",locklocksfile.c_str(),strerror(errno));
+          exit(EXIT_FAILURE);
+        }
 				close(fd);
 				if (mylock.l_type==F_UNLCK) {
 					if (unlink(locksfile.c_str()) == -1)

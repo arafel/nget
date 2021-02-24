@@ -530,7 +530,7 @@ void ParHandler::maybe_get_pxxs(const string &path, c_nntp_files_u &fc) {
 }
 
 
-void md5_file(c_file *f, uchar *result) {
+void md5_file(c_file *f, uint8_t *result) {
 	const int BLOCKSIZE = 8192;
 	char buffer[BLOCKSIZE];
 	MD5Context context;
@@ -542,7 +542,7 @@ void md5_file(c_file *f, uchar *result) {
 	memcpy(result, hash.hash, 16);
 }
 
-void md5_file(const char *filename, uchar *result) {
+void md5_file(const char *filename, uint8_t *result) {
 	c_file_fd f(filename, "rb");
 	md5_file(&f, result);
 }
@@ -571,9 +571,9 @@ static int par2file_check_packet(c_file_fd &f, int pos) {
 }
 
 static int par2file_find_packet(c_file_fd &f) {
-	const uchar parheader[] = "PAR2\0PKT";
+	const uint8_t parheader[] = "PAR2\0PKT";
 	const int BLOCKSIZE = 8192;
-	uchar buf[BLOCKSIZE];
+	uint8_t buf[BLOCKSIZE];
 	int pos = 0, bufc = 0;
 	while (1) {
 		while (bufc<8) {
@@ -615,8 +615,8 @@ bool par2file_get_sethash(const string &filename, string &sethash) {
 }
 
 static int parfile_check_header(c_file &f) {
-	const uchar parheader[] = "PAR\0\0\0\0\0";
-	uchar buf[8];
+	const uint8_t parheader[] = "PAR\0\0\0\0\0";
+	uint8_t buf[8];
 	f.readfull(buf, 8);
 	if (memcmp(buf, parheader, 8)){
 		PERROR("error reading %s: invalid parfile header", f.name());
@@ -652,8 +652,8 @@ bool parfile_ok(const string &filename, uint32_t &vol_number) {
 		c_file_fd f(filename.c_str(), "rb");
 		if (parfile_check_header(f))
 			return false;
-		uchar control_hash[16];
-		uchar actual_hash[16];
+		uint8_t control_hash[16];
+		uint8_t actual_hash[16];
 		f.readfull(control_hash, 16);
 		md5_file(&f, actual_hash);
 		if (memcmp(control_hash, actual_hash, 16))
@@ -685,9 +685,9 @@ int parfile_check(const string &parfilename, const string &path, const t_nocase_
 
 	for (unsigned int i=0;i<numfiles;++i) {
 		uint32_t entrysize;
-		uchar status;
+		uint8_t status;
 		uint64_t filesize;
-		uchar file_hash[16];
+		uint8_t file_hash[16];
 
 		f.read_le_u32(&entrysize);
 		f.readfull(buf.data(), 4); //ignore high dword of entrysize
@@ -704,7 +704,7 @@ int parfile_check(const string &parfilename, const string &path, const t_nocase_
 		
 		string filename;
 		for (unsigned int n=0; n<(entrysize-0x38)/2; ++n) {
-			if ((uchar)buf[n*2]>127 || buf[n*2+1]) {
+			if ((uint8_t)buf[n*2]>127 || buf[n*2+1]) {
 				PERROR("in %s: can't handle non-ascii filename for file %u", parfilename.c_str(), i);
 				set_autopar_warn_status();
 				++needed;
@@ -720,7 +720,7 @@ int parfile_check(const string &parfilename, const string &path, const t_nocase_
 				if (fsize(matchedfilename.c_str(), &actual_fsize) || (uint64_t)actual_fsize!=filesize)
 					continue;//doesn't match, try another
 				else {
-					uchar actual_hash[16];
+					uint8_t actual_hash[16];
 					md5_file(matchedfilename.c_str(), actual_hash);
 					if (memcmp(file_hash, actual_hash, 16)==0)
 						break;//found a good match

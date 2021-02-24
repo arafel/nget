@@ -25,6 +25,8 @@
 #include <list>
 #include <string>
 
+using namespace std;
+
 typedef list<string> arglist_t;
 void parseargs(arglist_t &argl, const char *s, bool ignorecomments=false);
 
